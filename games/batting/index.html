@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>テンポバッティング</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101512;
+      --panel: #1c231e;
+      --panel-2: #263129;
+      --line: rgba(255, 255, 255, .14);
+      --text: #f4f2e8;
+      --muted: #aeb9a8;
+      --accent: #ffcc49;
+      --accent-2: #38bdf8;
+      --danger: #ff5b4c;
+      --good: #48d597;
+      --grass: #214b2b;
+      --dirt: #9a6233;
+      --sky: #23404c;
+      font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 50% 8%, rgba(56, 189, 248, .13), transparent 30%),
+        linear-gradient(180deg, #162126 0%, var(--bg) 56%, #0b0f0c 100%);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      overflow-x: hidden;
+    }
+
+    button {
+      border: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1180px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .stage-wrap {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: #121915;
+      box-shadow: 0 22px 70px rgba(0, 0, 0, .34);
+      overflow: hidden;
+    }
+
+    .topbar {
+      min-height: 70px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(13, 18, 15, .92);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .brand span,
+    .pitch-readout,
+    .meter-label,
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .count {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .pill {
+      min-width: 78px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .pill strong {
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .pitch-readout {
+      justify-self: end;
+      text-align: right;
+      min-width: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #18311f;
+      touch-action: manipulation;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(17, 23, 19, .94);
+    }
+
+    .primary {
+      height: 58px;
+      color: #24190a;
+      background: linear-gradient(180deg, #ffe082 0%, #ffb21a 100%);
+      box-shadow: inset 0 -4px 0 rgba(94, 53, 0, .22), 0 10px 24px rgba(255, 180, 38, .22);
+      font-weight: 900;
+      font-size: 19px;
+      border-radius: 6px;
+    }
+
+    .primary:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 -2px 0 rgba(94, 53, 0, .22), 0 5px 14px rgba(255, 180, 38, .2);
+    }
+
+    .ghost {
+      height: 44px;
+      padding: 0 14px;
+      color: var(--text);
+      background: #27312b;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(28, 35, 30, .94);
+      padding: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .result {
+      min-height: 122px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background:
+        linear-gradient(135deg, rgba(255, 204, 73, .12), transparent 48%),
+        rgba(38, 49, 41, .75);
+    }
+
+    .result-name {
+      font-size: clamp(28px, 5vw, 46px);
+      font-weight: 950;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 3px 0 rgba(0, 0, 0, .25);
+    }
+
+    .result-detail {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 18px;
+    }
+
+    .meter {
+      margin-top: 10px;
+    }
+
+    .meter-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+
+    .bar {
+      height: 10px;
+      overflow: hidden;
+      background: #111711;
+      border: 1px solid var(--line);
+    }
+
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--danger), var(--accent), var(--good));
+      transition: width .22s ease;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .score-cell {
+      min-height: 58px;
+      padding: 9px 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .score-cell b {
+      display: block;
+      font-size: 20px;
+      color: var(--accent-2);
+    }
+
+    .pitch-list {
+      display: grid;
+      gap: 7px;
+      max-height: 315px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .pitch-row {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .04);
+      font-size: 12px;
+    }
+
+    .pitch-row strong {
+      color: var(--accent);
+    }
+
+    .notice {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .flash {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(circle at 50% 55%, rgba(255, 255, 255, .36), transparent 34%);
+      mix-blend-mode: screen;
+    }
+
+    .flash.on {
+      animation: flash .32s ease-out;
+    }
+
+    @keyframes flash {
+      0% { opacity: .95; }
+      100% { opacity: 0; }
+    }
+
+    @media (max-width: 880px) {
+      body {
+        padding: 10px;
+      }
+
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .count {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .pitch-readout {
+        justify-self: start;
+        text-align: left;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .ghost {
+        width: 100%;
+      }
+
+      canvas {
+        aspect-ratio: 4 / 3;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="テンポバッティングゲーム">
+    <section class="stage-wrap">
+      <div class="topbar">
+        <div class="brand">
+          <h1>テンポバッティング</h1>
+          <span>30球勝負。3球ごとに投手レベルアップ。</span>
+        </div>
+        <div class="count" aria-live="polite">
+          <div class="pill">LEVEL <strong id="levelText">1</strong></div>
+          <div class="pill">球数 <strong id="pitchText">0/30</strong></div>
+          <div class="pill">得点 <strong id="scoreText">0</strong></div>
+        </div>
+        <div class="pitch-readout" id="pitchReadout">次の投球を待っています</div>
+      </div>
+
+      <canvas id="game" width="1280" height="720" aria-label="バッティング画面"></canvas>
+
+      <div class="controls">
+        <button class="primary" id="swingButton">スイング</button>
+        <button class="ghost" id="resetButton">リセット</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel result" aria-live="polite">
+        <div>
+          <div class="result-name" id="resultName">PLAY BALL</div>
+          <div class="result-detail" id="resultDetail">Space / クリック / タップで振る</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>打撃感</h2>
+        <div class="meter">
+          <div class="meter-row">
+            <span class="meter-label">芯</span>
+            <span class="meter-label" id="sweetText">0%</span>
+          </div>
+          <div class="bar"><div class="fill" id="sweetFill"></div></div>
+        </div>
+        <div class="meter">
+          <div class="meter-row">
+            <span class="meter-label">タイミング</span>
+            <span class="meter-label" id="timingText">0%</span>
+          </div>
+          <div class="bar"><div class="fill" id="timingFill"></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>成績</h2>
+        <div class="score-grid">
+          <div class="score-cell"><b id="hitsText">0</b><span class="small">安打</span></div>
+          <div class="score-cell"><b id="hrText">0</b><span class="small">本塁打</span></div>
+          <div class="score-cell"><b id="outText">0</b><span class="small">アウト</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>投球ログ</h2>
+        <div class="pitch-list" id="pitchList"></div>
+      </section>
+
+      <section class="panel notice">
+        カーブは横へ逃げ、フォークは手前で落ち、シュートは食い込んできます。レベルが上がるほど球速と変化量が増えます。
+      </section>
+    </aside>
+  </main>
+  <div class="flash" id="flash"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.querySelector("#game");
+      const ctx = canvas.getContext("2d");
+      const els = {
+        levelText: document.querySelector("#levelText"),
+        pitchText: document.querySelector("#pitchText"),
+        scoreText: document.querySelector("#scoreText"),
+        pitchReadout: document.querySelector("#pitchReadout"),
+        resultName: document.querySelector("#resultName"),
+        resultDetail: document.querySelector("#resultDetail"),
+        sweetFill: document.querySelector("#sweetFill"),
+        timingFill: document.querySelector("#timingFill"),
+        sweetText: document.querySelector("#sweetText"),
+        timingText: document.querySelector("#timingText"),
+        hitsText: document.querySelector("#hitsText"),
+        hrText: document.querySelector("#hrText"),
+        outText: document.querySelector("#outText"),
+        pitchList: document.querySelector("#pitchList"),
+        swingButton: document.querySelector("#swingButton"),
+        resetButton: document.querySelector("#resetButton"),
+        flash: document.querySelector("#flash")
+      };
+
+      const W = canvas.width;
+      const H = canvas.height;
+      const plate = { x: W * .5, y: H * .77 };
+      const release = { x: W * .5, y: H * .29 };
+      const maxPitches = 30;
+      const pitchTypes = [
+        { name: "ストレート", unlock: 1, speed: 1.0, breakX: 0, drop: 0, color: "#f8fafc" },
+        { name: "カーブ", unlock: 2, speed: .93, breakX: -1, drop: .18, color: "#fde68a" },
+        { name: "フォーク", unlock: 3, speed: .9, breakX: 0, drop: 1.25, color: "#93c5fd" },
+        { name: "シュート", unlock: 4, speed: .96, breakX: 1, drop: .1, color: "#fda4af" }
+      ];
+
+      const state = {
+        status: "intro",
+        pitchNo: 0,
+        level: 1,
+        score: 0,
+        hits: 0,
+        homers: 0,
+        outs: 0,
+        current: null,
+        swing: null,
+        hitFx: [],
+        flyingText: [],
+        log: [],
+        lastTime: performance.now(),
+        shake: 0,
+        nextPitchTimer: 600,
+        audio: null
+      };
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function easeIn(t) {
+        return t * t * (3 - 2 * t);
+      }
+
+      function makeAudio() {
+        if (state.audio) return state.audio;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return null;
+        state.audio = new AudioContext();
+        return state.audio;
+      }
+
+      function tone(freq, duration, type, gain, when = 0) {
+        const audio = makeAudio();
+        if (!audio) return;
+        const start = audio.currentTime + when;
+        const osc = audio.createOscillator();
+        const amp = audio.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, start);
+        amp.gain.setValueAtTime(0, start);
+        amp.gain.linearRampToValueAtTime(gain, start + .01);
+        amp.gain.exponentialRampToValueAtTime(.001, start + duration);
+        osc.connect(amp).connect(audio.destination);
+        osc.start(start);
+        osc.stop(start + duration + .03);
+      }
+
+      function playSwingSound() {
+        tone(160, .08, "sawtooth", .06);
+        tone(90, .09, "triangle", .04, .02);
+      }
+
+      function playContactSound(power) {
+        const p = clamp(power, 0, 1);
+        tone(80 + p * 90, .16, "square", .08 + p * .08);
+        tone(440 + p * 520, .22, "triangle", .05 + p * .06, .015);
+        tone(980 + p * 780, .11, "sine", .04 + p * .05, .035);
+      }
+
+      function choosePitch(level) {
+        const available = pitchTypes.filter((p) => p.unlock <= level);
+        const weights = available.map((p) => {
+          if (p.name === "ストレート") return Math.max(.32, 1.15 - level * .07);
+          return .25 + (level - p.unlock + 1) * .18;
+        });
+        const total = weights.reduce((a, b) => a + b, 0);
+        let pick = Math.random() * total;
+        for (let i = 0; i < available.length; i += 1) {
+          pick -= weights[i];
+          if (pick <= 0) return available[i];
+        }
+        return available[available.length - 1];
+      }
+
+      function pitchPosition(pitch, elapsed) {
+        const t = clamp(elapsed / pitch.duration, 0, 1);
+        const e = easeIn(t);
+        const late = clamp((t - .42) / .58, 0, 1);
+        const breakStrength = pitch.breakAmount * late * late;
+        const wobble = Math.sin(t * Math.PI * 2.2 + pitch.seed) * pitch.breakAmount * .06 * late;
+        const x = release.x + (pitch.targetX - release.x) * e + pitch.breakX * breakStrength + wobble;
+        const baseY = release.y + (plate.y - release.y) * e;
+        const drop = pitch.drop * pitch.breakAmount * late * late * 1.45;
+        const y = baseY + drop;
+        const scale = .45 + e * 1.18;
+        return { x, y, t, scale };
+      }
+
+      function startPitch() {
+        if (state.pitchNo >= maxPitches) {
+          finishGame();
+          return;
+        }
+        state.pitchNo += 1;
+        state.level = Math.ceil(state.pitchNo / 3);
+        const type = choosePitch(state.level);
+        const levelFactor = (state.level - 1) / 9;
+        const speedMs = 1180 - state.level * 48;
+        const targetSpread = 92 + state.level * 4;
+        state.current = {
+          type,
+          elapsed: 0,
+          duration: clamp(speedMs / type.speed + (Math.random() * 90 - 45), 610, 1280),
+          targetX: plate.x + (Math.random() * targetSpread - targetSpread / 2),
+          breakX: type.breakX,
+          drop: type.drop,
+          breakAmount: 30 + state.level * 12 + levelFactor * 36,
+          seed: Math.random() * Math.PI * 2,
+          hit: false,
+          resolved: false
+        };
+        state.status = "pitching";
+        els.pitchReadout.textContent = `${type.name} / LV${state.level} / ${Math.round(145 + state.level * 4.5)}km/h`;
+        updateHud();
+      }
+
+      function resetGame() {
+        Object.assign(state, {
+          status: "intro",
+          pitchNo: 0,
+          level: 1,
+          score: 0,
+          hits: 0,
+          homers: 0,
+          outs: 0,
+          current: null,
+          swing: null,
+          hitFx: [],
+          flyingText: [],
+          log: [],
+          shake: 0,
+          nextPitchTimer: 600
+        });
+        els.resultName.textContent = "PLAY BALL";
+        els.resultDetail.textContent = "Space / クリック / タップで振る";
+        els.pitchReadout.textContent = "次の投球を待っています";
+        els.pitchList.innerHTML = "";
+        setMeters(0, 0);
+        updateHud();
+      }
+
+      function finishGame() {
+        state.status = "finished";
+        state.current = null;
+        const title = state.homers >= 6 ? "伝説の夜" : state.score >= 30 ? "強打者" : state.hits >= 10 ? "ナイスゲーム" : "GAME SET";
+        els.resultName.textContent = title;
+        els.resultDetail.textContent = `30球終了。得点 ${state.score} / 安打 ${state.hits} / HR ${state.homers}`;
+        els.pitchReadout.textContent = "リセットで再挑戦";
+      }
+
+      function swing() {
+        if (state.status === "intro") {
+          startPitch();
+          return;
+        }
+        if (state.status === "finished") return;
+        if (state.swing && state.swing.age < 180) return;
+        state.swing = { age: 0, duration: 270, contacted: false };
+        playSwingSound();
+        checkContact();
+      }
+
+      function checkContact() {
+        const pitch = state.current;
+        if (!pitch || pitch.hit || pitch.resolved || !state.swing) return;
+        const pos = pitchPosition(pitch, pitch.elapsed);
+        const timingError = Math.abs(pos.t - .895);
+        const zoneX = Math.abs(pos.x - plate.x);
+        const zoneY = Math.abs(pos.y - plate.y);
+        const batWindow = state.swing.age <= 135;
+        const canReach = zoneX < 120 && zoneY < 84 && pos.t > .66 && pos.t < 1.05 && batWindow;
+        if (!canReach) return;
+        pitch.hit = true;
+        pitch.resolved = true;
+        state.swing.contacted = true;
+        const timingScore = clamp(1 - timingError / .17, 0, 1);
+        const sweetScore = clamp(1 - (zoneX / 118 + zoneY / 92) / 1.7, 0, 1);
+        resolveHit(timingScore, sweetScore, pos);
+      }
+
+      function resolveHit(timingScore, sweetScore, pos) {
+        const quality = timingScore * .54 + sweetScore * .46;
+        const levelBonus = state.level * .008;
+        const roll = quality + levelBonus + (Math.random() * .12 - .04);
+        let result;
+        if (roll > .92) result = { name: "ホームラン", score: 4, hit: 1, hr: 1, out: 0, power: 1 };
+        else if (roll > .82) result = { name: "スリーベース", score: 3, hit: 1, hr: 0, out: 0, power: .86 };
+        else if (roll > .69) result = { name: "ツーベース", score: 2, hit: 1, hr: 0, out: 0, power: .73 };
+        else if (roll > .53) result = { name: "ヒット", score: 1, hit: 1, hr: 0, out: 0, power: .58 };
+        else if (timingScore > sweetScore) result = { name: "外野フライ", score: 0, hit: 0, hr: 0, out: 1, power: .42 };
+        else result = { name: "ピッチャーゴロ", score: 0, hit: 0, hr: 0, out: 1, power: .32 };
+        state.score += result.score;
+        state.hits += result.hit;
+        state.homers += result.hr;
+        state.outs += result.out;
+        state.shake = 8 + result.power * 24;
+        playContactSound(result.power);
+        setMeters(sweetScore, timingScore);
+        showResult(result, timingScore, sweetScore);
+        burst(pos.x, pos.y, result.power);
+        logPitch(result.name);
+        queueNextPitch();
+      }
+
+      function resolveMiss(reason) {
+        if (!state.current || state.current.resolved) return;
+        state.current.resolved = true;
+        state.outs += 1;
+        setMeters(0, 0);
+        els.resultName.textContent = reason;
+        els.resultDetail.textContent = "バットが空を切った";
+        logPitch(reason);
+        queueNextPitch();
+      }
+
+      function showResult(result, timingScore, sweetScore) {
+        els.resultName.textContent = result.name;
+        els.resultDetail.textContent = `芯 ${Math.round(sweetScore * 100)}% / タイミング ${Math.round(timingScore * 100)}%`;
+        if (result.power >= .58) {
+          els.flash.classList.remove("on");
+          void els.flash.offsetWidth;
+          els.flash.classList.add("on");
+        }
+        state.flyingText.push({
+          text: result.name,
+          x: plate.x,
+          y: plate.y - 80,
+          age: 0,
+          power: result.power
+        });
+      }
+
+      function burst(x, y, power) {
+        for (let i = 0; i < 26 + power * 32; i += 1) {
+          const angle = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.35;
+          const speed = 4 + Math.random() * 13 * power;
+          state.hitFx.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 360 + Math.random() * 260,
+            age: 0,
+            size: 2 + Math.random() * 5,
+            color: Math.random() > .34 ? "#ffcc49" : "#ffffff"
+          });
+        }
+      }
+
+      function queueNextPitch() {
+        updateHud();
+        state.status = "between";
+        state.nextPitchTimer = 740;
+        state.current = null;
+      }
+
+      function logPitch(result) {
+        const type = state.current ? state.current.type.name : "-";
+        state.log.unshift({
+          no: state.pitchNo,
+          level: state.level,
+          type,
+          result
+        });
+        state.log = state.log.slice(0, 12);
+        renderLog();
+      }
+
+      function renderLog() {
+        els.pitchList.innerHTML = state.log.map((row) => (
+          `<div class="pitch-row"><strong>${row.no}</strong><span>LV${row.level} ${row.type}</span><span>${row.result}</span></div>`
+        )).join("");
+      }
+
+      function setMeters(sweet, timing) {
+        const s = Math.round(sweet * 100);
+        const t = Math.round(timing * 100);
+        els.sweetFill.style.width = `${s}%`;
+        els.timingFill.style.width = `${t}%`;
+        els.sweetText.textContent = `${s}%`;
+        els.timingText.textContent = `${t}%`;
+      }
+
+      function updateHud() {
+        els.levelText.textContent = state.level;
+        els.pitchText.textContent = `${state.pitchNo}/${maxPitches}`;
+        els.scoreText.textContent = state.score;
+        els.hitsText.textContent = state.hits;
+        els.hrText.textContent = state.homers;
+        els.outText.textContent = state.outs;
+      }
+
+      function drawField() {
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, "#233f4c");
+        g.addColorStop(.42, "#203d2a");
+        g.addColorStop(1, "#19351f");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = "#214b2b";
+        ctx.beginPath();
+        ctx.ellipse(W / 2, H * .75, W * .58, H * .42, 0, Math.PI, 0);
+        ctx.fill();
+
+        ctx.fillStyle = "#7c4b2d";
+        ctx.beginPath();
+        ctx.moveTo(W / 2, H * .32);
+        ctx.lineTo(W * .17, H);
+        ctx.lineTo(W * .83, H);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,.65)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, H * .32);
+        ctx.lineTo(W * .17, H);
+        ctx.moveTo(W / 2, H * .32);
+        ctx.lineTo(W * .83, H);
+        ctx.stroke();
+
+        ctx.fillStyle = "#c7a27a";
+        ctx.beginPath();
+        ctx.ellipse(W / 2, H * .34, 86, 24, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#e8e0d5";
+        ctx.beginPath();
+        ctx.moveTo(plate.x, plate.y - 24);
+        ctx.lineTo(plate.x + 40, plate.y);
+        ctx.lineTo(plate.x + 25, plate.y + 34);
+        ctx.lineTo(plate.x - 25, plate.y + 34);
+        ctx.lineTo(plate.x - 40, plate.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,.18)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(plate.x - 90, plate.y - 105, 180, 145);
+      }
+
+      function drawPitcher() {
+        const wind = state.current ? Math.sin(state.current.elapsed / 95) : 0;
+        ctx.save();
+        ctx.translate(release.x, release.y + 10);
+        ctx.fillStyle = "#233348";
+        ctx.beginPath();
+        ctx.arc(0, -34, 22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#e4a46c";
+        ctx.beginPath();
+        ctx.arc(0, -46, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(-22, -22, 44, 55);
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 12;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-18, -8);
+        ctx.lineTo(-52, -5 + wind * 10);
+        ctx.moveTo(18, -8);
+        ctx.lineTo(48, -24 - wind * 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawBatter() {
+        const s = state.swing ? clamp(state.swing.age / state.swing.duration, 0, 1) : 0;
+        const angle = state.swing ? -1.1 + Math.sin(s * Math.PI) * 2.35 : -1.05;
+        const bx = plate.x + 118;
+        const by = plate.y + 52;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.fillStyle = "#f1c27d";
+        ctx.beginPath();
+        ctx.arc(0, -76, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#375c9f";
+        ctx.fillRect(-18, -57, 36, 66);
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 12;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-7, -30);
+        ctx.lineTo(-33, -5);
+        ctx.moveTo(9, -28);
+        ctx.lineTo(31, -6);
+        ctx.stroke();
+        ctx.rotate(angle);
+        ctx.strokeStyle = "#d8b16a";
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(12, -26);
+        ctx.lineTo(-170, -36);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawBall() {
+        if (!state.current) return;
+        const pos = pitchPosition(state.current, state.current.elapsed);
+        ctx.save();
+        ctx.fillStyle = state.current.type.color;
+        ctx.shadowColor = state.current.type.color;
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 11 * pos.scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#d64b4b";
+        ctx.lineWidth = 2 * pos.scale;
+        ctx.beginPath();
+        ctx.arc(pos.x - 2 * pos.scale, pos.y, 5 * pos.scale, -1.1, 1.1);
+        ctx.arc(pos.x + 2 * pos.scale, pos.y, 5 * pos.scale, 2.05, 4.2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawEffects(dt) {
+        state.hitFx = state.hitFx.filter((p) => p.age < p.life);
+        state.hitFx.forEach((p) => {
+          p.age += dt;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += .18;
+          const a = 1 - p.age / p.life;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        state.flyingText = state.flyingText.filter((t) => t.age < 880);
+        state.flyingText.forEach((t) => {
+          t.age += dt;
+          const a = 1 - t.age / 880;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = t.power > .85 ? "#ffcc49" : "#f8fafc";
+          ctx.font = `900 ${36 + t.power * 28}px "Segoe UI", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.fillText(t.text, t.x, t.y - t.age * .085);
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function drawIntro() {
+        if (state.status !== "intro" && state.status !== "finished") return;
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,.34)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffcc49";
+        ctx.font = "900 54px 'Segoe UI', sans-serif";
+        ctx.fillText(state.status === "finished" ? "GAME SET" : "PLAY BALL", W / 2, H * .44);
+        ctx.fillStyle = "#f4f2e8";
+        ctx.font = "700 22px 'Segoe UI', sans-serif";
+        ctx.fillText(state.status === "finished" ? "リセットで再挑戦" : "スイングで第1球スタート", W / 2, H * .51);
+        ctx.restore();
+      }
+
+      function update(dt) {
+        if (state.swing) {
+          state.swing.age += dt;
+          checkContact();
+          if (state.swing.age >= state.swing.duration) state.swing = null;
+        }
+        if (state.current && state.status === "pitching") {
+          state.current.elapsed += dt;
+          checkContact();
+          if (state.current.elapsed > state.current.duration + 130 && !state.current.resolved) {
+            resolveMiss("空振り");
+          }
+        }
+        if (state.status === "between") {
+          state.nextPitchTimer -= dt;
+          if (state.nextPitchTimer <= 0) startPitch();
+        }
+        state.shake = Math.max(0, state.shake - dt * .05);
+      }
+
+      function render(dt) {
+        ctx.save();
+        if (state.shake > 0) {
+          ctx.translate((Math.random() - .5) * state.shake, (Math.random() - .5) * state.shake);
+        }
+        drawField();
+        drawPitcher();
+        drawBatter();
+        drawBall();
+        drawEffects(dt);
+        drawIntro();
+        ctx.restore();
+      }
+
+      function loop(now) {
+        const dt = Math.min(34, now - state.lastTime);
+        state.lastTime = now;
+        update(dt);
+        render(dt);
+        requestAnimationFrame(loop);
+      }
+
+      els.swingButton.addEventListener("click", swing);
+      canvas.addEventListener("pointerdown", swing);
+      els.resetButton.addEventListener("click", resetGame);
+      window.addEventListener("keydown", (event) => {
+        if (event.code === "Space") {
+          event.preventDefault();
+          swing();
+        }
+      });
+
+      updateHud();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

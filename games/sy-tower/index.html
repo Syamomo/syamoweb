@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SY-TOWER</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #101010;
+      color: #ddd;
+      font-family: Arial, "MS Gothic", sans-serif;
+      font-size: 13px;
+      user-select: none;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+    }
+    .window {
+      width: min(690px, 100%);
+      background: #202020;
+      border: 1px solid #444;
+      padding: 8px;
+      box-shadow: 0 8px 30px #000;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 7px;
+    }
+    .toolbar strong { margin-right: auto; color: #f1f1f1; letter-spacing: 1px; }
+    .toolbar button {
+      border: 1px solid #555;
+      border-radius: 3px;
+      background: #303030;
+      color: #ddd;
+      padding: 5px 8px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .toolbar button:hover, .toolbar button.active { background: #5a4528; border-color: #b8874b; color: #fff; }
+    .inset {
+      background: #000;
+      border: 1px solid #555;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #151515;
+      image-rendering: pixelated;
+      cursor: crosshair;
+    }
+    .hidden-ui { display: none; }
+    .status {
+      padding: 7px 2px 0;
+      color: #aaa;
+      font-size: 11px;
+    }
+    @media (max-width: 650px) {
+      body { padding: 3px; }
+      canvas { max-height: 72vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="window" aria-label="SY-TOWER game">
+    <nav class="toolbar">
+      <strong>SY-TOWER</strong>
+      <button id="restart">はじめから</button>
+      <button data-action="pause">一時停止</button>
+      <button class="active" data-difficulty="easy">かんたん</button>
+      <button data-difficulty="normal">ふつう</button>
+      <button data-difficulty="hard">むずかしい</button>
+      <button data-difficulty="expert">超むずかしい</button>
+    </nav>
+    <section>
+      <div class="inset"><canvas id="game" width="640" height="360"></canvas></div>
+      <div class="hidden-ui">
+        <span id="score"></span><span id="powerText"></span><span id="powerFill"></span>
+      </div>
+    </section>
+    <footer class="status" id="status">難易度: かんたん　|　スペースキーでジャンプ</footer>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const powerEl = document.getElementById("powerFill");
+      const powerText = document.getElementById("powerText");
+      const statusEl = document.getElementById("status");
+      const W = canvas.width, H = canvas.height;
+      const TOWER_LEFT = 18, TOWER_RIGHT = 430, PLAY_TOP = 48, PLAY_BOTTOM = H - 14, WALL_W = 14;
+      const PLAY_LEFT = TOWER_LEFT + WALL_W, PLAY_RIGHT = TOWER_RIGHT - WALL_W;
+      const PLAYER_W = 12, PLAYER_H = 17;
+      const configs = {
+        easy:   { label: "かんたん", gap: 50, widthMin: 75, widthMax: 108, special: .15, drift: 63 },
+        normal: { label: "ふつう", gap: 48, widthMin: 65, widthMax: 96, special: .28, drift: 70 },
+        hard:   { label: "むずかしい", gap: 46, widthMin: 56, widthMax: 86, special: .43, drift: 78 },
+        expert: { label: "超むずかしい", gap: 44, widthMin: 48, widthMax: 78, special: .58, drift: 86 }
+      };
+      let difficulty = "easy";
+      let record = 0;
+      let game, lastTime = performance.now();
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+      function makePlatform(y, floor, forcedType, forcedX, forcedWidth) {
+        const cfg = configs[difficulty];
+        const w = forcedWidth || Math.round(rand(cfg.widthMin, cfg.widthMax));
+        let type = forcedType || "normal";
+        if (!forcedType && floor > 3 && Math.random() < cfg.special) {
+          const choices = ["belt", "moveX", "moveY", "spring"];
+          type = choices[Math.floor(Math.random() * choices.length)];
+        }
+        const x = forcedX === undefined ? Math.round(rand(PLAY_LEFT + 5, PLAY_RIGHT - w - 5)) : forcedX;
+        return {
+          floor, type, x, y, baseX: x, baseY: y,
+          prevX: x, prevY: y, w, h: 12,
+          phase: rand(0, Math.PI * 2), speed: rand(.8, 1.25),
+          belt: Math.random() < .5 ? -1 : 1
+        };
+      }
+
+      function makeFloor(y, floor) {
+        const cfg = configs[difficulty];
+        const count = Math.random() < .58 ? 2 : 3;
+        const slotWidth = (PLAY_RIGHT - PLAY_LEFT) / count;
+        const platforms = [];
+        for (let slot = 0; slot < count; slot++) {
+          const maxWidth = Math.min(cfg.widthMax, slotWidth - 13);
+          const minWidth = Math.min(cfg.widthMin, maxWidth);
+          const w = Math.round(rand(minWidth, maxWidth));
+          const slotLeft = PLAY_LEFT + slot * slotWidth + 4;
+          const x = Math.round(rand(slotLeft, slotLeft + slotWidth - w - 8));
+          platforms.push(makePlatform(y, floor, undefined, x, w));
+        }
+        return platforms;
+      }
+
+      function reset() {
+        const cfg = configs[difficulty];
+        const platforms = [];
+        const groundY = PLAY_BOTTOM - 8;
+        const ground = makePlatform(groundY, 1, "normal", PLAY_LEFT, PLAY_RIGHT - PLAY_LEFT);
+        platforms.push(ground);
+        let y = groundY;
+        for (let floor = 2; floor < 20; floor++) {
+          y -= cfg.gap;
+          platforms.push(...makeFloor(y, floor));
+        }
+        game = {
+          state: "ready", platforms, nextFloor: 20,
+          cameraY: 0, targetCameraY: 0, highest: 1, power: 0, charging: false, inputHeld: false, time: 0,
+          player: { x: (PLAY_LEFT + PLAY_RIGHT - PLAYER_W) / 2, y: groundY - PLAYER_H, vx: cfg.drift, vy: 0, grounded: true, standing: ground },
+          notice: "SPACE KEY START", noticeTimer: Infinity
+        };
+        record = Math.max(record, 1);
+        syncUi();
+      }
+
+      function addHigherPlatforms() {
+        const cfg = configs[difficulty];
+        let topY = Math.min(...game.platforms.map(platform => platform.y));
+        while (topY - game.cameraY > -H) {
+          topY -= cfg.gap;
+          game.platforms.push(...makeFloor(topY, game.nextFloor++));
+        }
+        game.platforms = game.platforms.filter(p => p.y - game.cameraY < H + 120);
+      }
+
+      function chargeStart() {
+        if (game.state === "over") { reset(); return; }
+        if (game.state === "paused") return;
+        game.inputHeld = true;
+        if (game.state === "ready") {
+          game.state = "playing";
+          game.noticeTimer = 0;
+        }
+        if (game.player.grounded && !game.charging) {
+          game.charging = true;
+          game.power = 0;
+        }
+      }
+
+      function chargeEnd() {
+        game.inputHeld = false;
+        if (!game.charging || !game.player.grounded || game.state !== "playing") return;
+        const p = game.player;
+        p.grounded = false;
+        p.standing = null;
+        p.vy = -(190 + game.power * 315);
+        game.charging = false;
+      }
+
+      function update(dt, time) {
+        if (game.state === "paused" || game.state === "over") return;
+        const p = game.player;
+        const cfg = configs[difficulty];
+        game.time = time;
+        if (game.charging) {
+          game.power += dt;
+          if (game.power > 1) game.power = 0;
+        }
+        for (const platform of game.platforms) {
+          platform.prevX = platform.x;
+          platform.prevY = platform.y;
+          if (platform.type === "moveX") platform.x = clamp(platform.baseX + Math.sin(time * .001 * platform.speed + platform.phase) * 31, PLAY_LEFT + 3, PLAY_RIGHT - platform.w - 3);
+          if (platform.type === "moveY") platform.y = platform.baseY + Math.sin(time * .001 * platform.speed + platform.phase) * 20;
+        }
+        if (p.grounded && p.standing) {
+          p.y += p.standing.y - p.standing.prevY;
+          p.x += p.standing.x - p.standing.prevX;
+          if (p.standing.type === "belt") p.x += p.standing.belt * 74 * dt;
+        } else {
+          p.vy += 590 * dt;
+          const oldBottom = p.y + PLAYER_H;
+          p.y += p.vy * dt;
+          if (p.vy > 0) {
+            const newBottom = p.y + PLAYER_H;
+            let landing = null;
+            for (const platform of game.platforms) {
+              const cross = oldBottom <= platform.y + 3 && newBottom >= platform.y;
+              const overlap = p.x + PLAYER_W - 4 > platform.x && p.x + 4 < platform.x + platform.w;
+              if (cross && overlap && (!landing || platform.y < landing.y)) landing = platform;
+            }
+            if (landing) {
+              p.y = landing.y - PLAYER_H;
+              p.standing = landing;
+              if (landing.type === "spring") {
+                p.vy = -475;
+                p.grounded = false;
+                game.notice = "JUMP台!";
+                game.noticeTimer = 650;
+              } else {
+                p.vy = 0;
+                p.grounded = true;
+                game.power = 0;
+                game.charging = game.inputHeld;
+              }
+              if (landing.floor > game.highest) {
+                game.highest = landing.floor;
+                record = Math.max(record, game.highest);
+                game.targetCameraY = Math.min(game.targetCameraY, landing.y - H * .63);
+              }
+            }
+          }
+        }
+        p.x += p.vx * dt;
+        if (p.x <= PLAY_LEFT) { p.x = PLAY_LEFT; p.vx = Math.abs(cfg.drift); }
+        if (p.x + PLAYER_W >= PLAY_RIGHT) { p.x = PLAY_RIGHT - PLAYER_W; p.vx = -Math.abs(cfg.drift); }
+        if (p.grounded && p.standing) {
+          const stillOnPlatform = p.x + PLAYER_W > p.standing.x && p.x < p.standing.x + p.standing.w;
+          if (!stillOnPlatform) {
+            p.grounded = false;
+            p.standing = null;
+            p.vy = 0;
+            game.power = 0;
+            game.charging = false;
+          }
+        }
+        if (game.targetCameraY < game.cameraY) game.cameraY += (game.targetCameraY - game.cameraY) * Math.min(1, dt * 5.3);
+        if (p.y - game.cameraY > PLAY_BOTTOM + 16) {
+          game.state = "over";
+          game.charging = false;
+          game.notice = "GAME OVER";
+          game.noticeTimer = Infinity;
+        }
+        if (game.noticeTimer !== Infinity) game.noticeTimer -= dt * 1000;
+        addHigherPlatforms();
+        syncUi();
+      }
+
+      function syncUi() {
+        const pct = Math.round(game.power * 100);
+        scoreEl.textContent = String(game.highest).padStart(4, "0") + "階";
+        powerEl.style.width = pct + "%";
+        powerText.textContent = pct + "%";
+        powerEl.className = "meter-fill" + (pct > 86 ? " danger" : pct > 62 ? " hot" : "");
+        statusEl.textContent = `SY-TOWER　|　難易度: ${configs[difficulty].label}　|　${game.state === "paused" ? "一時停止中" : "SPACEキーまたはマウスでジャンプ"}`;
+      }
+
+      function drawBackground() {
+        ctx.fillStyle = "#171717";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#321a18";
+        ctx.fillRect(TOWER_LEFT, PLAY_TOP, TOWER_RIGHT - TOWER_LEFT, PLAY_BOTTOM - PLAY_TOP);
+        for (let y = PLAY_TOP; y < PLAY_BOTTOM; y += 10) {
+          for (let x = TOWER_LEFT; x < TOWER_RIGHT; x += 18) {
+            const offset = ((y - PLAY_TOP) / 10) % 2 ? 9 : 0;
+            ctx.fillStyle = ((x + y) / 2) % 3 ? "#472421" : "#5b2b24";
+            ctx.fillRect(x + offset, y, 15, 7);
+          }
+        }
+        ctx.fillStyle = "rgba(0,0,0,.4)";
+        ctx.fillRect(PLAY_LEFT, PLAY_TOP, PLAY_RIGHT - PLAY_LEFT, PLAY_BOTTOM - PLAY_TOP);
+        ctx.fillStyle = "#171717";
+        ctx.fillRect(TOWER_RIGHT, 0, W - TOWER_RIGHT, H);
+        ctx.strokeStyle = "rgba(255,255,255,.035)";
+        for (let x = TOWER_RIGHT - H; x < W; x += 14) {
+          ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.stroke();
+        }
+        drawWall(TOWER_LEFT, PLAY_TOP, WALL_W, PLAY_BOTTOM - PLAY_TOP);
+        drawWall(TOWER_RIGHT - WALL_W, PLAY_TOP, WALL_W, PLAY_BOTTOM - PLAY_TOP);
+        drawHud();
+      }
+
+      function drawWall(x, y, w, h) {
+        ctx.fillStyle = "#9a552d"; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = "#e28a45"; ctx.fillRect(x + 2, y, 3, h);
+        ctx.fillStyle = "#51271b"; ctx.fillRect(x + w - 3, y, 3, h);
+        ctx.fillStyle = "rgba(255,198,111,.55)";
+        for (let yy = y + 4; yy < y + h; yy += 12) ctx.fillRect(x + 3, yy, w - 6, 2);
+      }
+
+      function drawHud() {
+        const pct = Math.round(game.power * 100);
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#a9b0c0"; ctx.font = "italic bold 15px Arial";
+        ctx.fillText("POWER", 56, 24);
+        for (let i = 0; i < 16; i++) {
+          ctx.fillStyle = i < Math.ceil(pct / 6.25) ? (pct > 86 ? "#ff5252" : "#7d75ff") : "#34314c";
+          ctx.fillRect(50 + i * 7, 29, 5, 7);
+        }
+        ctx.fillStyle = "#d8ee36"; ctx.font = "italic bold 30px Arial"; ctx.textAlign = "center";
+        ctx.fillText(String(game.highest).padStart(4, "0") + "階", 260, 34);
+        ctx.fillStyle = "#8a8a8a"; ctx.font = "italic bold 26px Arial"; ctx.textAlign = "left";
+        ctx.fillText("SY-TOWER", 474, 48);
+        ctx.fillStyle = "#777"; ctx.font = "italic bold 11px Arial";
+        ctx.fillText("NAGI-P SOFT", 524, 62);
+        ctx.fillStyle = "#eee"; ctx.font = "italic bold 16px Arial";
+        ctx.fillText("DIFFICULTY", 466, 98);
+        ctx.textAlign = "right"; ctx.font = "bold 14px 'MS Gothic'";
+        ctx.fillText(configs[difficulty].label, 607, 116);
+        ctx.textAlign = "left"; ctx.font = "italic bold 16px Arial";
+        ctx.fillText("RECORD", 466, 146);
+        ctx.textAlign = "right"; ctx.font = "italic bold 16px Arial";
+        ctx.fillText(String(record).padStart(4, "0") + "階", 607, 165);
+        ctx.textAlign = "center"; ctx.fillStyle = "#aaa"; ctx.font = "bold 21px Arial";
+        ctx.fillText("⏸", 536, 239); ctx.fillText("↩", 536, 296);
+        ctx.fillStyle = "#eee"; ctx.font = "italic bold 14px Arial";
+        ctx.fillText("PAUSE", 536, 259); ctx.fillText("ABORT", 536, 316);
+      }
+
+      function drawPlatform(platform) {
+        const y = Math.round(platform.y - game.cameraY);
+        if (y < PLAY_TOP || y > PLAY_BOTTOM) return;
+        const x = Math.round(platform.x), w = platform.w, h = platform.h;
+        if (platform.type === "spring") {
+          ctx.fillStyle = "#dc52dc"; ctx.fillRect(x, y - 3, w, 3);
+          ctx.fillStyle = "#fff"; for (let i = x + 4; i < x + w - 3; i += 9) ctx.fillRect(i, y - 2, 4, 1);
+        }
+        const colors = { normal: "#eaa377", belt: "#b87b39", moveX: "#7fb9ba", moveY: "#8eae70", spring: "#cb82b9" };
+        ctx.fillStyle = colors[platform.type]; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = "#ffcab0"; ctx.fillRect(x, y, w, 1);
+        ctx.fillStyle = "#693524"; ctx.fillRect(x, y + h - 1, w, 1);
+        if (platform.type === "belt") {
+          ctx.save();
+          ctx.beginPath(); ctx.rect(x + 1, y + 1, w - 2, h - 2); ctx.clip();
+          ctx.fillStyle = "#ffe078";
+          ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
+          const arrow = platform.belt > 0 ? "›" : "‹";
+          const offset = ((game.time * .045 * platform.belt) % 16 + 16) % 16;
+          for (let i = -16; i < w + 16; i += 16) ctx.fillText(arrow, x + i + offset, y + 10);
+          ctx.restore();
+          ctx.fillStyle = "#fff2ae";
+          ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
+          ctx.fillText(platform.belt > 0 ? "→" : "←", x + w / 2, y + 10);
+        }
+        if (platform.type === "moveX" || platform.type === "moveY") {
+          ctx.fillStyle = "#315354";
+          const symbol = platform.type === "moveX" ? "↔" : "↕";
+          ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(symbol, x + w / 2, y + 6);
+        }
+      }
+
+      function drawPlayer() {
+        const p = game.player, x = Math.round(p.x), y = Math.round(p.y - game.cameraY);
+        ctx.fillStyle = "#48d6da"; ctx.fillRect(x + 2, y + 1, 8, 6);
+        ctx.fillStyle = "#ffe0b0"; ctx.fillRect(x + (p.vx > 0 ? 8 : 2), y + 3, 2, 2);
+        ctx.fillStyle = "#2c8c94"; ctx.fillRect(x + 1, y + 7, 10, 6);
+        ctx.fillStyle = "#f3f3d0"; ctx.fillRect(x + 3, y + 8, 6, 2);
+        ctx.fillStyle = "#17484e"; ctx.fillRect(x + 2, y + 13, 3, 4); ctx.fillRect(x + 7, y + 13, 3, 4);
+      }
+
+      function render() {
+        drawBackground();
+        for (const platform of game.platforms) drawPlatform(platform);
+        drawPlayer();
+        if (game.noticeTimer > 0 || game.state === "ready" || game.state === "over" || game.state === "paused") {
+          const main = game.state === "paused" ? "PAUSE" : game.notice;
+          ctx.fillStyle = "rgba(0,0,0,.68)"; ctx.fillRect(PLAY_LEFT + 65, H / 2 - 25, 245, 50);
+          ctx.fillStyle = game.state === "over" ? "#ffcf45" : "#fff";
+          ctx.font = "italic bold 20px Arial"; ctx.textAlign = "center";
+          ctx.fillText(main, (PLAY_LEFT + PLAY_RIGHT) / 2, H / 2 + 7);
+        }
+      }
+
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (event.clientX - rect.left) * W / rect.width, y: (event.clientY - rect.top) * H / rect.height };
+      }
+
+      function frame(now) {
+        const dt = Math.min(.034, (now - lastTime) / 1000);
+        lastTime = now;
+        update(dt, now);
+        render();
+        requestAnimationFrame(frame);
+      }
+
+      function togglePause() {
+        if (game.state !== "over" && game.state !== "ready") {
+          game.state = game.state === "paused" ? "playing" : "paused";
+          syncUi();
+        }
+      }
+      function closeMenus() {
+        document.querySelectorAll(".dropdown").forEach(x => x.classList.remove("open"));
+        document.querySelectorAll(".menu-button").forEach(x => x.classList.remove("active"));
+      }
+      document.addEventListener("keydown", e => {
+        if (e.code === "Space") { e.preventDefault(); if (!e.repeat) chargeStart(); }
+        if (e.key.toLowerCase() === "p") togglePause();
+      });
+      document.addEventListener("keyup", e => { if (e.code === "Space") { e.preventDefault(); chargeEnd(); } });
+      canvas.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        const point = canvasPoint(e);
+        if (point.x > TOWER_RIGHT && point.y > 205 && point.y < 272) { togglePause(); return; }
+        if (point.x > TOWER_RIGHT && point.y > 272) { reset(); return; }
+        chargeStart();
+      });
+      window.addEventListener("pointerup", chargeEnd);
+      document.getElementById("restart").addEventListener("click", reset);
+      document.querySelectorAll(".menu-button").forEach(btn => btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const menu = document.getElementById(btn.dataset.menu), wasOpen = menu.classList.contains("open");
+        closeMenus();
+        if (!wasOpen) { menu.classList.add("open"); btn.classList.add("active"); }
+      }));
+      document.querySelectorAll("[data-action]").forEach(btn => btn.addEventListener("click", () => {
+        const action = btn.dataset.action;
+        closeMenus();
+        if (action === "restart") reset();
+        if (action === "pause") togglePause();
+        if (action === "help") { game.notice = "SPACEキーで溜めて離す"; game.noticeTimer = 1700; }
+      }));
+      document.querySelectorAll("[data-difficulty]").forEach(btn => btn.addEventListener("click", () => {
+        difficulty = btn.dataset.difficulty;
+        document.querySelectorAll("[data-difficulty]").forEach(item => item.classList.toggle("active", item === btn));
+        closeMenus();
+        reset();
+      }));
+      document.addEventListener("click", closeMenus);
+      reset();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

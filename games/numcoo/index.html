@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fff7eb" />
+    <title>Numcoo | 数字をことばで並べよう</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <button class="brand" type="button" data-action="home" aria-label="トップへ戻る">
+          <span class="brand-mark">N</span>
+          <span>
+            <strong>Numcoo</strong>
+            <small>ナムクー</small>
+          </span>
+        </button>
+        <button class="icon-button" type="button" data-action="show-rules" aria-label="遊び方を見る">?</button>
+      </header>
+      <section id="screen" class="screen" aria-live="polite"></section>
+    </main>
+
+    <dialog id="rules-dialog" class="rules-dialog">
+      <button class="dialog-close" type="button" data-action="close-rules" aria-label="閉じる">×</button>
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2>数字を見せずに、<br />ことばで並ぼう。</h2>
+      <ol class="rules-list">
+        <li><span>1</span><p>スマホを回して、自分だけの数字を確認。</p></li>
+        <li><span>2</span><p>お題に沿って、数字の大きさを口頭で表現。</p></li>
+        <li><span>3</span><p>みんなで相談して、小さい順に並んで答え合わせ。</p></li>
+      </ol>
+      <p class="rules-note">数字そのものや、数字を直接連想する表現は言わないのがコツ。</p>
+      <button class="primary-button full" type="button" data-action="close-rules">わかった！</button>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>

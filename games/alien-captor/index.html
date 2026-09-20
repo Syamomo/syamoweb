@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151d19">
+  <meta name="description" content="エイリアンは潜伏し、地球防衛軍は痕跡を追う。2〜4人で遊ぶ、11ラウンドの追跡ボードゲーム。">
+  <title>Alien Captor — 都市封鎖作戦</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="js/game-engine.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" data-action="home" aria-label="Alien Captor タイトルへ">
+      <svg viewBox="0 0 40 44" aria-hidden="true"><path d="M20 2C7 2 1 10 3 22c2 10 12 20 17 20s15-10 17-20C39 10 33 2 20 2Z" fill="currentColor"/><path d="M8 15c8 0 11 6 10 12-7-1-10-6-10-12Zm24 0c-8 0-11 6-10 12 7-1 10-6 10-12Z" fill="#151d19"/></svg>
+      <span>ALIEN CAPTOR<small>地球防衛軍 / 都市封鎖作戦</small></span>
+    </a>
+    <nav class="header-actions" aria-label="ゲームメニュー">
+      <span class="connection"><i></i> LOCAL OPERATION</span>
+      <button class="text-button" data-action="rules"><span aria-hidden="true">ⓘ</span> 遊び方</button>
+      <button class="text-button" id="privacy-button" data-action="hide" hidden><span aria-hidden="true">▣</span> 画面を隠す</button>
+      <button class="icon-button" id="restart-button" data-action="restart" aria-label="ゲームをやり直す" title="ゲームをやり直す" hidden>↺</button>
+    </nav>
+  </header>
+  <main id="app"></main>
+  <footer class="site-footer"><span>ALIEN CAPTOR <span class="muted">/</span> FIELD EDITION 01</span><span>2–4 PLAYERS <span class="muted">/</span> 11 ROUNDS <span class="muted">/</span> ONE DEVICE</span></footer>
+  <dialog id="rules-dialog" aria-labelledby="rules-title">
+    <div class="dialog-heading"><p class="eyebrow">FIELD MANUAL</p><button class="icon-button" data-action="close-rules" aria-label="遊び方を閉じる">✕</button></div>
+    <h2 id="rules-title">作戦マニュアル</h2>
+    <p class="dialog-lead">エイリアン1人と、地球防衛軍1〜3人。1台の端末を交代して使います。防衛軍は人数に関係なく3機すべてを操作します。</p>
+    <div class="manual-step"><b>01</b><div><h3>防衛軍を配備する</h3><p>防衛軍が先に、3機をそれぞれ別の交差点に置きます。ビルが5×5棟、交差点が4×4か所ある街です。</p></div></div>
+    <div class="manual-step"><b>02</b><div><h3>エイリアンが潜伏する</h3><p>防衛軍は画面を見ないでください。最初は好きなビルへ。次からは上下左右に隣り合う、まだ訪れていないビルへ必ず1棟移動します。斜め移動・待機・再訪はできません。</p></div></div>
+    <div class="manual-step"><b>03</b><div><h3>防衛軍が行動する</h3><p>各機が1回ずつ、<strong>隣の交差点へ移動</strong>、または<strong>現在の交差点の周囲4棟から1棟を捜索</strong>します。行動順は自由。斜め移動や、他の機体と同じ交差点への移動はできません。</p></div></div>
+    <div class="manual-step"><b>04</b><div><h3>見つけた痕跡から経路を読む</h3><p>エイリアンは訪れたすべてのビルに痕跡を残します。捜索して初めて公開され、残り続けます。黄色は1ラウンド目、赤色は6ラウンド目、青色はそれ以外。青色から正確なラウンドはわかりません。</p></div></div>
+    <div class="trace-key"><span><i class="trace-dot yellow"></i> R1 / 最初の潜伏</span><span><i class="trace-dot red"></i> R6 / 中間地点</span><span><i class="trace-dot blue"></i> その他の痕跡</span></div>
+    <div class="victory-rules"><p><strong>エイリアンの勝利</strong><br>11ラウンド目の防衛軍の行動終了まで逃げ切る。</p><p><strong>地球防衛軍の勝利</strong><br>エイリアンがいるビルを捜索する、またはエイリアンの移動先がなくなる。</p></div>
+    <p class="manual-note">捜索時に何もなかったビルにも、後からエイリアンが入ることがあります。機体が近づくだけでは捕獲できません。交代画面が出たら端末を渡し、表示された役割の人だけが操作してください。</p>
+    <button class="primary-button full" data-action="close-rules">了解、作戦へ戻る <span>↗</span></button>
+  </dialog>
+  <dialog id="restart-dialog" aria-labelledby="restart-title">
+    <p class="eyebrow">RESET OPERATION</p><h2 id="restart-title">作戦をやり直しますか？</h2>
+    <p class="dialog-lead">進行中のゲームを終了し、タイトル画面へ戻ります。</p>
+    <div class="dialog-buttons"><button class="secondary-button" data-action="cancel-restart">ゲームを続ける</button><button class="primary-button" data-action="confirm-restart">タイトルへ戻る</button></div>
+  </dialog>
+  <noscript>このゲームを遊ぶには、ブラウザのJavaScriptを有効にしてください。</noscript>
+</body>
+</html>

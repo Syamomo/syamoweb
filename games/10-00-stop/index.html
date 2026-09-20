@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10.00 Stop</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f4ea;
+      --muted: #b9b0a0;
+      --line: rgba(247, 244, 234, 0.18);
+      --panel: rgba(18, 23, 30, 0.84);
+      --panel-strong: rgba(24, 31, 40, 0.94);
+      --accent: #ffcf4a;
+      --accent-2: #5fd6c7;
+      --hot: #ff6b58;
+      --good: #8bf09a;
+      --bg-a: #151a21;
+      --bg-b: #243241;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Noto Sans JP", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(120deg, rgba(95, 214, 199, 0.12), transparent 36%, rgba(255, 207, 74, 0.1) 78%, transparent),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 14px),
+        linear-gradient(135deg, var(--bg-a), var(--bg-b) 58%, #11161d);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(1040px, 100%);
+      min-height: min(720px, calc(100vh - 48px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .stage,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .stage {
+      border-radius: 8px;
+      padding: clamp(20px, 4vw, 42px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 22px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    h1 {
+      font-size: clamp(2.25rem, 7vw, 5.4rem);
+      line-height: 0.92;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .target {
+      border: 1px solid rgba(255, 207, 74, 0.48);
+      color: #17140a;
+      background: var(--accent);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 800;
+      min-width: 96px;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(255, 207, 74, 0.2);
+    }
+
+    .watch-wrap {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 18px;
+      min-height: 310px;
+    }
+
+    .watch {
+      width: min(420px, 78vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      background:
+        conic-gradient(from 0deg, var(--progress-color, var(--accent-2)) var(--progress), rgba(255, 255, 255, 0.09) 0),
+        linear-gradient(145deg, #1d2732, #0d1117);
+      box-shadow:
+        inset 0 0 0 16px rgba(255, 255, 255, 0.05),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.11),
+        0 28px 90px rgba(0, 0, 0, 0.44);
+    }
+
+    .watch::before {
+      content: "";
+      position: absolute;
+      inset: 28px;
+      border-radius: 50%;
+      border: 1px dashed rgba(247, 244, 234, 0.18);
+    }
+
+    .time {
+      position: relative;
+      z-index: 1;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(3.6rem, 12vw, 7.4rem);
+      font-weight: 850;
+      line-height: 1;
+      min-width: 5ch;
+      text-align: center;
+    }
+
+    .time.hidden {
+      color: transparent;
+      filter: none;
+      opacity: 0;
+      text-shadow: none;
+    }
+
+    .watch.progress-hidden {
+      --progress-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .status {
+      min-height: 1.5em;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 650;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.16);
+      border-radius: 8px;
+    }
+
+    button {
+      font: inherit;
+      border: 0;
+      cursor: pointer;
+      border-radius: 8px;
+      min-height: 48px;
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .mode {
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      font-weight: 750;
+      padding: 0 10px;
+    }
+
+    .mode[aria-pressed="true"] {
+      color: #081211;
+      background: var(--accent-2);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .action {
+      min-width: 150px;
+      padding: 0 22px;
+      color: #151006;
+      background: var(--accent);
+      font-weight: 900;
+      font-size: 1.05rem;
+      box-shadow: 0 16px 32px rgba(255, 207, 74, 0.16);
+    }
+
+    .action.stop {
+      color: #fffaf4;
+      background: var(--hot);
+      box-shadow: 0 16px 32px rgba(255, 107, 88, 0.2);
+    }
+
+    .side {
+      border-radius: 8px;
+      padding: 20px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 18px;
+      background: var(--panel-strong);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
+
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      display: grid;
+      gap: 8px;
+      min-height: 144px;
+      align-content: center;
+    }
+
+    .result-time {
+      font-variant-numeric: tabular-nums;
+      font-size: 2.35rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .judgement {
+      font-size: 1rem;
+      color: var(--muted);
+      min-height: 1.45em;
+    }
+
+    .judgement.perfect {
+      color: var(--good);
+    }
+
+    .judgement.close {
+      color: var(--accent);
+    }
+
+    .records {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .records li {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 10px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .records .mode-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      grid-column: 1 / -1;
+    }
+
+    .records .score {
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      text-align: center;
+      align-self: start;
+    }
+
+    .reset {
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+      min-height: 42px;
+      padding: 0 14px;
+      font-weight: 750;
+    }
+
+    .reset:hover,
+    .mode:hover {
+      border-color: rgba(247, 244, 234, 0.35);
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 12px;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      header,
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        display: grid;
+      }
+
+      .target {
+        justify-self: start;
+      }
+
+      .controls {
+        display: grid;
+      }
+
+      .action {
+        width: 100%;
+      }
+
+      .side {
+        min-height: 320px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition-duration: 1ms !important;
+        animation-duration: 1ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="stage" aria-label="10.00 Stop game">
+      <header>
+        <div>
+          <h1>10.00 Stop</h1>
+          <p class="subtitle">10.00秒ぴったりで止めるストップウォッチゲーム</p>
+        </div>
+        <div class="target">TARGET<br>10.00</div>
+      </header>
+
+      <div class="watch-wrap">
+        <div class="watch" id="watch" style="--progress: 0turn">
+          <div class="time" id="time">0.00</div>
+        </div>
+        <div class="status" id="status">モードを選んで START</div>
+      </div>
+
+      <div class="controls">
+        <div class="mode-tabs" aria-label="モード選択">
+          <button class="mode" type="button" data-mode="visible" aria-pressed="true">ずっと表示</button>
+          <button class="mode" type="button" data-mode="blind" aria-pressed="false">3秒だけ表示</button>
+        </div>
+        <button class="action" id="action" type="button">START</button>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="結果">
+      <div>
+        <h2>Result</h2>
+      </div>
+      <section class="result" aria-live="polite">
+        <div class="result-time" id="resultTime">--.--</div>
+        <div class="judgement" id="judgement">まだ記録はありません</div>
+      </section>
+      <section>
+        <h2>Best</h2>
+        <ul class="records" id="records"></ul>
+      </section>
+      <button class="reset" id="reset" type="button">RESET RECORDS</button>
+    </aside>
+  </main>
+
+  <script>
+    const target = 10;
+    const timeEl = document.getElementById("time");
+    const statusEl = document.getElementById("status");
+    const actionBtn = document.getElementById("action");
+    const watchEl = document.getElementById("watch");
+    const resultTimeEl = document.getElementById("resultTime");
+    const judgementEl = document.getElementById("judgement");
+    const recordsEl = document.getElementById("records");
+    const resetBtn = document.getElementById("reset");
+    const modeButtons = [...document.querySelectorAll(".mode")];
+
+    const modeNames = {
+      visible: "ずっと表示",
+      blind: "3秒だけ表示"
+    };
+
+    let mode = "visible";
+    let running = false;
+    let startedAt = 0;
+    let rafId = 0;
+    let lastElapsed = 0;
+    let records = JSON.parse(localStorage.getItem("tenStopRecords") || "[]");
+
+    function formatTime(seconds) {
+      return seconds.toFixed(2).padStart(4, "0");
+    }
+
+    function formatDiff(seconds) {
+      const sign = seconds > 0 ? "+" : "";
+      return `${sign}${seconds.toFixed(2)}秒`;
+    }
+
+    function updateWatch(elapsed) {
+      const displayElapsed = Math.min(elapsed, 99.99);
+      timeEl.textContent = formatTime(displayElapsed);
+      watchEl.style.setProperty("--progress", `${Math.min(elapsed / target, 1)}turn`);
+
+      const shouldHide = running && mode === "blind" && elapsed >= 3;
+      timeEl.classList.toggle("hidden", shouldHide);
+      watchEl.classList.toggle("progress-hidden", shouldHide);
+      statusEl.textContent = shouldHide ? "数字と円は消えました。感覚で STOP" : running ? "10.00秒を狙って STOP" : "モードを選んで START";
+    }
+
+    function tick(now) {
+      lastElapsed = (now - startedAt) / 1000;
+      updateWatch(lastElapsed);
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function startGame() {
+      running = true;
+      startedAt = performance.now();
+      lastElapsed = 0;
+      actionBtn.textContent = "STOP";
+      actionBtn.classList.add("stop");
+      modeButtons.forEach((button) => button.disabled = true);
+      resultTimeEl.textContent = "--.--";
+      judgementEl.textContent = "計測中";
+      judgementEl.className = "judgement";
+      updateWatch(0);
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function stopGame() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      actionBtn.textContent = "START";
+      actionBtn.classList.remove("stop");
+      modeButtons.forEach((button) => button.disabled = false);
+      timeEl.classList.remove("hidden");
+      updateWatch(lastElapsed);
+
+      const diff = lastElapsed - target;
+      const absDiff = Math.abs(diff);
+      const record = {
+        mode,
+        time: Number(lastElapsed.toFixed(2)),
+        diff: Number(diff.toFixed(2)),
+        absDiff: Number(absDiff.toFixed(2)),
+        createdAt: Date.now()
+      };
+
+      records.push(record);
+      records.sort((a, b) => a.absDiff - b.absDiff || b.createdAt - a.createdAt);
+      records = records.slice(0, 8);
+      localStorage.setItem("tenStopRecords", JSON.stringify(records));
+
+      resultTimeEl.textContent = formatTime(record.time);
+      judgementEl.className = "judgement";
+
+      if (record.absDiff === 0) {
+        judgementEl.textContent = "PERFECT! 10.00秒";
+        judgementEl.classList.add("perfect");
+      } else if (record.absDiff <= 0.1) {
+        judgementEl.textContent = `かなり近い: ${formatDiff(record.diff)}`;
+        judgementEl.classList.add("close");
+      } else {
+        judgementEl.textContent = `ズレ: ${formatDiff(record.diff)}`;
+      }
+
+      renderRecords();
+    }
+
+    function renderRecords() {
+      recordsEl.innerHTML = "";
+      if (records.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "ベスト記録はここに表示されます";
+        recordsEl.append(empty);
+        return;
+      }
+
+      records.forEach((record, index) => {
+        const item = document.createElement("li");
+        const rank = document.createElement("strong");
+        const score = document.createElement("span");
+        const detail = document.createElement("span");
+
+        rank.textContent = `#${index + 1}`;
+        score.className = "score";
+        score.textContent = `${formatTime(record.time)} / ${formatDiff(record.diff)}`;
+        detail.className = "mode-label";
+        detail.textContent = modeNames[record.mode];
+
+        item.append(rank, score, detail);
+        recordsEl.append(item);
+      });
+    }
+
+    actionBtn.addEventListener("click", () => {
+      if (running) {
+        stopGame();
+      } else {
+        startGame();
+      }
+    });
+
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        mode = button.dataset.mode;
+        modeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        statusEl.textContent = mode === "blind" ? "3秒後に数字が消えるモード" : "最後まで数字が見えるモード";
+      });
+    });
+
+    resetBtn.addEventListener("click", () => {
+      records = [];
+      localStorage.removeItem("tenStopRecords");
+      renderRecords();
+      resultTimeEl.textContent = "--.--";
+      judgementEl.textContent = "記録をリセットしました";
+      judgementEl.className = "judgement";
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        actionBtn.click();
+      }
+    });
+
+    renderRecords();
+    updateWatch(0);
+  </script>
+</body>
+</html>

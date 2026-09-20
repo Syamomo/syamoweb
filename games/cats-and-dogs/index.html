@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5ef">
+  <meta name="description" content="猫と犬の立体駒をドラッグして遊ぶ、2人用のかぶせ三目並べ。大きな駒でかくして、3つ並べよう。">
+  <title>ねこといぬの かくれんぼ</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23226367'/%3E%3Cpath d='M15 38V15l13 10h8l13-10v23c0 20-34 20-34 0' fill='%23fff7e8'/%3E%3Ccircle cx='25' cy='37' r='3' fill='%23226367'/%3E%3Ccircle cx='39' cy='37' r='3' fill='%23226367'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">●<i>●</i></span><div><p class="eyebrow">CATS &amp; DOGS</p><h1>ねこといぬの <span>かくれんぼ</span></h1></div></div>
+      <nav aria-label="ゲームメニュー"><button id="help-button" class="quiet-button"><span aria-hidden="true">?</span> あそびかた</button><button id="reset-button" class="quiet-button" aria-label="はじめから"><span aria-hidden="true">↻</span> <span class="reset-label">はじめから</span></button></nav>
+    </header>
+    <section class="play-area" aria-label="かぶせ三目並べ">
+      <div class="turn-bar"><div class="player-tag cat-tag" id="cat-tag"><span class="player-dot"></span><b>ねこ</b><span class="player-role">先手</span></div><div class="turn-copy"><span class="turn-caption" id="turn-caption">YOUR TURN</span><h2 id="turn-title" aria-live="polite">ねこのばん</h2></div><div class="player-tag dog-tag" id="dog-tag"><span class="player-dot"></span><b>いぬ</b><span class="player-role">後手</span></div></div>
+      <div class="stage" id="stage">
+        <canvas id="board" aria-label="猫と犬の立体盤面。駒をつかんで、マスまでドラッグします。" tabindex="0"></canvas>
+        <div class="tray-label" id="cat-tray-label"><b>ねこの手元</b><span>大・中・小 × 2</span></div><div class="tray-label" id="dog-tray-label"><b>いぬの手元</b><span>大・中・小 × 2</span></div>
+        <div class="stage-loading" id="loading">盤面を準備しています…</div>
+        <div class="winner-panel" id="winner-panel" hidden><span class="winner-kicker">WINNER</span><h2 id="winner-title"></h2><p id="winner-description"></p><button id="rematch-button" class="primary-button">もういちど遊ぶ <span aria-hidden="true">↗</span></button></div>
+      </div>
+      <div class="instruction-bar"><span class="drag-icon" aria-hidden="true">↗</span><p id="instruction" role="status">手元の駒を、マスまでドラッグしよう</p><span class="move-count" id="move-count">1手目</span></div>
+    </section>
+    <footer class="game-footer"><p><b>かぶせて、ならべて。</b> 見えている自分の駒が3つ並んだら勝ち。</p><span>2人であそぶ</span></footer>
+    <details class="keyboard-help"><summary>キーボードでの操作</summary><p>盤面にフォーカスし、Tabで選択できる駒を切り替え、Enterで持ち上げます。矢印キーでマスを選び、Enterで置きます。盤上から持ち上げた駒は元に戻せません。</p><div id="keyboard-controls" aria-label="キーボード用の駒選択"></div></details>
+  </main>
+  <dialog id="help-dialog"><div class="dialog-heading"><p class="eyebrow">HOW TO PLAY</p><button class="close-button" data-close aria-label="閉じる">×</button></div><h2>小さい駒をかくして、<br>3つ、ならべよう。</h2><ol class="rules-list"><li><b>ねこ、いぬ、交互のばん。</b><p>同じ画面で2人対戦。大・中・小の駒が、それぞれ2個ずつあります。</p></li><li><b>駒はつかんで、ドラッグ。</b><p>空いているマスか、小さい駒の上へ。相手の駒にも、自分の駒にもかぶせられます。同じ大きさには置けません。</p></li><li><b>盤上の駒も、お引っこし。</b><p>見えている自分の駒を別のマスへ移動できます。少しドラッグすると移動が確定し、元のマスに戻したり、別の駒に変えたりできません。</p></li><li><b>持ち上げたときも、気をつけて。</b><p>下から現れた駒で3つ並んだら、その駒の持ち主の勝ち。その場でゲーム終了です。</p></li></ol><p class="dialog-note">置けない場所で離したら、同じ駒をつかみ直してね。軽くタップするだけでは駒は動きません。</p><button class="primary-button" data-close>わかった、遊ぼう</button></dialog>
+  <dialog id="reset-dialog"><div class="dialog-heading"><p class="eyebrow">NEW GAME</p><button class="close-button" data-close aria-label="閉じる">×</button></div><h2>はじめから遊ぶ？</h2><p>今の対戦を終えて、駒をすべて手元に戻します。</p><div class="dialog-actions"><button class="quiet-button" data-close>つづける</button><button class="primary-button" id="confirm-reset">はじめから</button></div></dialog>
+  <noscript>このゲームを遊ぶには、ブラウザのJavaScriptを有効にしてください。</noscript>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

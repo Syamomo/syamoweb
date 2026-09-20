@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>コネクト4</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111418;
+      --panel: #1b222b;
+      --panel-2: #232d38;
+      --grid: #165a8f;
+      --grid-edge: #0d3c63;
+      --red: #e34848;
+      --red-dark: #9f242b;
+      --yellow: #f1c84b;
+      --yellow-dark: #aa7c17;
+      --empty: #0c1117;
+      --ink: #f5f7fa;
+      --muted: #a7b0bb;
+      --focus: #7dd3fc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 14% 10%, rgba(41, 91, 132, 0.5), transparent 28%),
+        linear-gradient(135deg, #10141a 0%, #181d24 45%, #101316 100%);
+      color: var(--ink);
+      touch-action: manipulation;
+    }
+
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+    }
+
+    .app {
+      width: min(100vw, 1040px);
+      height: min(100svh, 620px);
+      padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      display: grid;
+      grid-template-columns: minmax(168px, 0.72fr) minmax(360px, 1.55fr);
+      gap: 14px;
+      align-items: center;
+    }
+
+    .hud {
+      align-self: stretch;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: rgba(20, 26, 33, 0.82);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.34);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.45rem, 3.6svh, 2.1rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .turn-panel {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--panel-2);
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .status {
+      min-height: 2.4em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(1rem, 3svh, 1.45rem);
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .token {
+      width: clamp(28px, 7svh, 42px);
+      aspect-ratio: 1;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.24), inset 0 5px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    .token.red,
+    .cell.red::before {
+      background: radial-gradient(circle at 35% 28%, #ff8b8b 0 12%, var(--red) 38%, var(--red-dark) 100%);
+    }
+
+    .token.yellow,
+    .cell.yellow::before {
+      background: radial-gradient(circle at 35% 28%, #fff2a2 0 12%, var(--yellow) 42%, var(--yellow-dark) 100%);
+    }
+
+    .token.draw {
+      background: linear-gradient(90deg, var(--red) 0 49%, var(--yellow) 51% 100%);
+    }
+
+    .score {
+      display: grid;
+      gap: 8px;
+      align-self: start;
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.055);
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .score-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .mini-token {
+      width: 18px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .mini-token.red {
+      background: var(--red);
+    }
+
+    .mini-token.yellow {
+      background: var(--yellow);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #314151;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      color: #69727c;
+      background: #222a32;
+      cursor: default;
+      transform: none;
+    }
+
+    .board-wrap {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .drop-row {
+      width: min(100%, calc((100svh - 92px) * 1.14));
+      margin-inline: auto;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: clamp(5px, 1.25svh, 9px);
+    }
+
+    .drop {
+      aspect-ratio: 1.45;
+      min-height: 34px;
+      border-radius: 8px;
+      background: #263545;
+      color: #d9e3ee;
+      font-size: clamp(1.1rem, 3.6svh, 1.8rem);
+      line-height: 1;
+    }
+
+    .drop:not(:disabled):hover {
+      background: #36506a;
+    }
+
+    .board {
+      width: min(100%, calc((100svh - 92px) * 1.14));
+      max-height: calc(100svh - 80px);
+      aspect-ratio: 7 / 6;
+      margin-inline: auto;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: clamp(5px, 1.25svh, 10px);
+      padding: clamp(8px, 1.7svh, 14px);
+      border: clamp(4px, 1svh, 8px) solid var(--grid-edge);
+      border-radius: 8px;
+      background: linear-gradient(145deg, #2072af, var(--grid));
+      box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -8px 0 rgba(0, 0, 0, 0.18),
+        0 22px 50px rgba(0, 0, 0, 0.36);
+    }
+
+    .cell {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #090d12 0 58%, rgba(255, 255, 255, 0.18) 59% 62%, rgba(0, 0, 0, 0.25) 65% 100%);
+      box-shadow: inset 0 7px 9px rgba(0, 0, 0, 0.54), 0 1px 0 rgba(255, 255, 255, 0.14);
+    }
+
+    .cell::before {
+      content: "";
+      position: absolute;
+      inset: 5%;
+      border-radius: 50%;
+      opacity: 0;
+      transform: translateY(-18%);
+      transition: opacity 130ms ease, transform 170ms cubic-bezier(0.2, 0.75, 0.25, 1.05);
+      box-shadow: inset 0 -7px 0 rgba(0, 0, 0, 0.22), inset 0 6px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    .cell.red::before,
+    .cell.yellow::before {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .cell.dropping::before {
+      animation: checkerDrop var(--drop-duration, 360ms) cubic-bezier(0.16, 0.78, 0.2, 1.02) both;
+    }
+
+    @keyframes checkerDrop {
+      0% {
+        opacity: 1;
+        transform: translateY(calc(-1 * var(--drop-distance, 420%)));
+      }
+
+      72% {
+        transform: translateY(8%);
+      }
+
+      88% {
+        transform: translateY(-4%);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .cell.win {
+      outline: clamp(3px, 0.7svh, 5px) solid #f6f8fb;
+      outline-offset: -2px;
+    }
+
+    @media (orientation: portrait) {
+      .app {
+        height: 100svh;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 10px;
+      }
+
+      .hud {
+        grid-template-columns: auto 1fr auto;
+        grid-template-rows: auto;
+        align-items: center;
+        padding: 10px;
+      }
+
+      .turn-panel,
+      .score {
+        align-self: stretch;
+      }
+
+      .score {
+        display: none;
+      }
+
+      .controls {
+        width: min(210px, 35vw);
+      }
+
+      .board-wrap {
+        min-height: 0;
+      }
+
+      .drop-row,
+      .board {
+        width: min(96vw, calc((100svh - 132px) * 1.16));
+      }
+    }
+
+    @media (max-height: 430px) and (orientation: landscape) {
+      .app {
+        grid-template-columns: minmax(142px, 0.58fr) minmax(330px, 1.6fr);
+        gap: 10px;
+      }
+
+      .hud {
+        padding: 10px;
+        gap: 8px;
+      }
+
+      .score-row {
+        min-height: 30px;
+        padding: 6px 8px;
+      }
+
+      .drop-row,
+      .board {
+        width: min(100%, calc((100svh - 70px) * 1.14));
+      }
+
+      button {
+        min-height: 38px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="コネクト4">
+    <section class="hud" aria-live="polite">
+      <h1>コネクト4</h1>
+      <div class="turn-panel">
+        <div class="label">TURN</div>
+        <div class="status" id="status">
+          <span class="token red" id="statusToken" aria-hidden="true"></span>
+          <span id="statusText">赤の番</span>
+        </div>
+      </div>
+      <div class="score" aria-label="勝利数">
+        <div class="score-row">
+          <span class="score-name"><span class="mini-token red" aria-hidden="true"></span>赤</span>
+          <span id="redWins">0</span>
+        </div>
+        <div class="score-row">
+          <span class="score-name"><span class="mini-token yellow" aria-hidden="true"></span>黄</span>
+          <span id="yellowWins">0</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button type="button" id="undoButton">Undo</button>
+        <button type="button" id="resetButton">Reset</button>
+      </div>
+    </section>
+
+    <section class="board-wrap">
+      <div class="drop-row" id="dropRow" aria-label="列を選択"></div>
+      <div class="board" id="board" aria-label="盤面"></div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const ROWS = 6;
+      const COLS = 7;
+      const EMPTY = 0;
+      const RED = 1;
+      const YELLOW = 2;
+
+      const boardEl = document.getElementById("board");
+      const dropRowEl = document.getElementById("dropRow");
+      const statusTokenEl = document.getElementById("statusToken");
+      const statusTextEl = document.getElementById("statusText");
+      const undoButton = document.getElementById("undoButton");
+      const resetButton = document.getElementById("resetButton");
+      const redWinsEl = document.getElementById("redWins");
+      const yellowWinsEl = document.getElementById("yellowWins");
+
+      let grid = createGrid();
+      let current = RED;
+      let history = [];
+      let winner = EMPTY;
+      let winningCells = [];
+      let scores = { [RED]: 0, [YELLOW]: 0 };
+      let animatedMove = null;
+      let audioContext = null;
+
+      function createGrid() {
+        return Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+      }
+
+      function playerName(player) {
+        return player === RED ? "赤" : "黄";
+      }
+
+      function playerClass(player) {
+        return player === RED ? "red" : "yellow";
+      }
+
+      function nextPlayer(player) {
+        return player === RED ? YELLOW : RED;
+      }
+
+      function buildBoard() {
+        boardEl.innerHTML = "";
+        dropRowEl.innerHTML = "";
+
+        for (let col = 0; col < COLS; col += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "drop";
+          button.textContent = "▼";
+          button.dataset.col = String(col);
+          button.setAttribute("aria-label", `${col + 1}列目`);
+          dropRowEl.appendChild(button);
+        }
+
+        for (let row = 0; row < ROWS; row += 1) {
+          for (let col = 0; col < COLS; col += 1) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.dataset.row = String(row);
+            cell.dataset.col = String(col);
+            boardEl.appendChild(cell);
+          }
+        }
+      }
+
+      function render() {
+        const winSet = new Set(winningCells.map(([row, col]) => `${row},${col}`));
+        for (const cell of boardEl.children) {
+          const row = Number(cell.dataset.row);
+          const col = Number(cell.dataset.col);
+          const value = grid[row][col];
+          const shouldDrop = animatedMove && animatedMove.row === row && animatedMove.col === col;
+          cell.className = "cell";
+          cell.style.removeProperty("--drop-distance");
+          cell.style.removeProperty("--drop-duration");
+          if (value !== EMPTY) cell.classList.add(playerClass(value));
+          if (shouldDrop) {
+            cell.classList.add("dropping");
+            cell.style.setProperty("--drop-distance", `${(row + 1) * 112}%`);
+            cell.style.setProperty("--drop-duration", `${Math.min(560, 250 + row * 48)}ms`);
+          }
+          if (winSet.has(`${row},${col}`)) cell.classList.add("win");
+          cell.setAttribute("aria-label", `${row + 1}行${col + 1}列 ${value === EMPTY ? "空" : playerName(value)}`);
+        }
+
+        const boardFull = grid.every((row) => row.every((value) => value !== EMPTY));
+        const finished = winner !== EMPTY || boardFull;
+
+        for (const button of dropRowEl.children) {
+          const col = Number(button.dataset.col);
+          button.disabled = finished || grid[0][col] !== EMPTY;
+        }
+
+        undoButton.disabled = history.length === 0;
+        redWinsEl.textContent = String(scores[RED]);
+        yellowWinsEl.textContent = String(scores[YELLOW]);
+
+        statusTokenEl.className = "token";
+        if (winner !== EMPTY) {
+          statusTokenEl.classList.add(playerClass(winner));
+          statusTextEl.textContent = `${playerName(winner)}の勝ち`;
+        } else if (boardFull) {
+          statusTokenEl.classList.add("draw");
+          statusTextEl.textContent = "引き分け";
+        } else {
+          statusTokenEl.classList.add(playerClass(current));
+          statusTextEl.textContent = `${playerName(current)}の番`;
+        }
+      }
+
+      function dropChecker(col) {
+        if (winner !== EMPTY || grid[0][col] !== EMPTY) return;
+        ensureAudio();
+
+        for (let row = ROWS - 1; row >= 0; row -= 1) {
+          if (grid[row][col] === EMPTY) {
+            const played = current;
+            grid[row][col] = current;
+            history.push({ row, col, player: current, scoredWinner: EMPTY });
+            animatedMove = { row, col };
+
+            const result = findWinner(row, col, current);
+            if (result.length) {
+              winner = current;
+              winningCells = result;
+              scores[current] += 1;
+              history[history.length - 1].scoredWinner = current;
+            } else {
+              current = nextPlayer(current);
+            }
+            render();
+            playDropSound(row);
+            if (winner !== EMPTY) playWinSound(played);
+            return;
+          }
+        }
+      }
+
+      function undo() {
+        const last = history.pop();
+        if (!last) return;
+
+        grid[last.row][last.col] = EMPTY;
+        if (last.scoredWinner !== EMPTY) {
+          scores[last.scoredWinner] = Math.max(0, scores[last.scoredWinner] - 1);
+        }
+        winner = EMPTY;
+        winningCells = [];
+        animatedMove = null;
+        current = last.player;
+        render();
+        playUndoSound();
+      }
+
+      function resetRound() {
+        grid = createGrid();
+        current = RED;
+        history = [];
+        winner = EMPTY;
+        winningCells = [];
+        animatedMove = null;
+        render();
+      }
+
+      function ensureAudio() {
+        if (audioContext) return audioContext;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return null;
+        audioContext = new AudioContext();
+        return audioContext;
+      }
+
+      function playTone(frequency, duration, type, volume, delay = 0) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        if (ctx.state === "suspended") ctx.resume();
+
+        const start = ctx.currentTime + delay;
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration + 0.02);
+      }
+
+      function playDropSound(row) {
+        playTone(230 - row * 13, 0.08, "sine", 0.09);
+        playTone(95, 0.05, "triangle", 0.05, 0.055);
+      }
+
+      function playWinSound(player) {
+        const base = player === RED ? 392 : 440;
+        playTone(base, 0.12, "triangle", 0.08, 0.1);
+        playTone(base * 1.25, 0.14, "triangle", 0.075, 0.22);
+        playTone(base * 1.5, 0.18, "triangle", 0.07, 0.36);
+      }
+
+      function playUndoSound() {
+        playTone(180, 0.07, "sine", 0.055);
+        playTone(125, 0.08, "sine", 0.045, 0.055);
+      }
+
+      function findWinner(row, col, player) {
+        const directions = [
+          [0, 1],
+          [1, 0],
+          [1, 1],
+          [1, -1],
+        ];
+
+        for (const [dr, dc] of directions) {
+          const chain = [[row, col]];
+          chain.push(...collect(row, col, dr, dc, player));
+          chain.push(...collect(row, col, -dr, -dc, player));
+
+          if (chain.length >= 4) {
+            return chain
+              .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+              .slice(0, 4);
+          }
+        }
+        return [];
+      }
+
+      function collect(row, col, dr, dc, player) {
+        const cells = [];
+        let nextRow = row + dr;
+        let nextCol = col + dc;
+
+        while (
+          nextRow >= 0 &&
+          nextRow < ROWS &&
+          nextCol >= 0 &&
+          nextCol < COLS &&
+          grid[nextRow][nextCol] === player
+        ) {
+          cells.push([nextRow, nextCol]);
+          nextRow += dr;
+          nextCol += dc;
+        }
+        return cells;
+      }
+
+      dropRowEl.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-col]");
+        if (!button) return;
+        dropChecker(Number(button.dataset.col));
+      });
+
+      undoButton.addEventListener("click", undo);
+      resetButton.addEventListener("click", resetRound);
+
+      buildBoard();
+      render();
+    })();
+  </script>
+</body>
+</html>

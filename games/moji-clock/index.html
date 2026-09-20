@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Moji Clock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101215;
+      --panel: #191c21;
+      --panel-2: #22262d;
+      --line: #343a44;
+      --text: #f5f2ea;
+      --muted: #a9b0b8;
+      --p1: #37c6ad;
+      --p2: #ffb451;
+      --danger: #ff5d73;
+      --ok: #8de36b;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .35);
+      font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(55, 198, 173, .16), transparent 26%),
+        radial-gradient(circle at 88% 14%, rgba(255, 180, 81, .18), transparent 28%),
+        linear-gradient(145deg, #101215 0%, #15191e 46%, #0e1114 100%);
+      color: var(--text);
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(980px, 100%);
+      min-height: min(720px, calc(100dvh - 28px));
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 54px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .screen {
+      display: none;
+      min-height: 0;
+    }
+
+    .screen.active {
+      display: grid;
+    }
+
+    .setup {
+      align-content: center;
+      gap: 16px;
+    }
+
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      background: rgba(25, 28, 33, .92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    label {
+      display: grid;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      min-height: 54px;
+      border-radius: 7px;
+      border: 1px solid #454c57;
+      background: #0f1216;
+      color: var(--text);
+      padding: 9px 12px;
+      font-size: 24px;
+      font-weight: 800;
+      text-align: center;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #b6e7dc;
+      box-shadow: 0 0 0 3px rgba(55, 198, 173, .2);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 20px;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .primary {
+      min-height: 58px;
+      border-radius: 8px;
+      color: #08100e;
+      background: linear-gradient(135deg, #94f0df, #ffd083);
+      font-size: 20px;
+      font-weight: 900;
+      box-shadow: var(--shadow);
+    }
+
+    .game {
+      grid-template-rows: 1fr auto;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .arena {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) minmax(190px, 1.2fr) minmax(120px, 1fr);
+      gap: 12px;
+    }
+
+    .player {
+      border: 1px solid var(--line);
+      background: rgba(25, 28, 33, .88);
+      border-radius: 8px;
+      min-height: 220px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      align-items: center;
+      padding: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .player.active-turn {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, #191c21), rgba(25, 28, 33, .94));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), var(--shadow);
+    }
+
+    .player-name {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .timer {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(40px, 9vw, 96px);
+      font-weight: 950;
+      line-height: 1;
+      letter-spacing: 0;
+      text-align: center;
+    }
+
+    .player.active-turn .timer {
+      color: var(--accent);
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .center-button {
+      position: relative;
+      border-radius: 8px;
+      border: 1px solid #424954;
+      background:
+        linear-gradient(180deg, rgba(245, 242, 234, .08), rgba(245, 242, 234, .02)),
+        #15181d;
+      color: var(--text);
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 12px;
+      min-height: 220px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .center-button:active {
+      transform: scale(.992);
+    }
+
+    .turn-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .moji {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      min-height: 120px;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .moji-number {
+      font-size: clamp(94px, 20vw, 210px);
+      line-height: .85;
+    }
+
+    .moji-unit {
+      font-size: clamp(28px, 7vw, 72px);
+      line-height: 1;
+    }
+
+    .tap-copy {
+      color: var(--text);
+      font-size: clamp(18px, 3vw, 28px);
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .control {
+      min-height: 46px;
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-weight: 800;
+    }
+
+    .control.danger {
+      color: #ffdce2;
+      border-color: rgba(255, 93, 115, .5);
+    }
+
+    .finished {
+      color: var(--danger);
+    }
+
+    .paused .tap-copy::after {
+      content: " / 一時停止中";
+      color: var(--muted);
+      font-size: .8em;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 10px;
+      }
+
+      .app {
+        min-height: calc(100dvh - 20px);
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .brand {
+        display: grid;
+        gap: 4px;
+      }
+
+      .subtitle {
+        white-space: normal;
+      }
+
+      .setup-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .arena {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(116px, .45fr) minmax(250px, 1fr) minmax(116px, .45fr);
+      }
+
+      .player {
+        min-height: 116px;
+        padding: 10px;
+      }
+
+      .center-button {
+        min-height: 250px;
+      }
+
+      .timer {
+        font-size: clamp(36px, 15vw, 72px);
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 560px) {
+      body {
+        padding: 8px;
+      }
+
+      .app {
+        min-height: calc(100dvh - 16px);
+        gap: 8px;
+      }
+
+      .topbar {
+        min-height: 34px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .arena {
+        grid-template-columns: minmax(110px, .9fr) minmax(220px, 1.25fr) minmax(110px, .9fr);
+      }
+
+      .player,
+      .center-button {
+        min-height: 170px;
+      }
+
+      .moji {
+        min-height: 82px;
+      }
+
+      .moji-number {
+        font-size: 92px;
+      }
+
+      .moji-unit {
+        font-size: 34px;
+      }
+
+      .controls {
+        grid-template-columns: repeat(3, minmax(90px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Moji Clock</h1>
+        <div class="subtitle">1対1しりとり用カウンター</div>
+      </div>
+      <div class="hint" id="topHint">条件を決めて開始</div>
+    </header>
+
+    <section class="screen setup active" id="setupScreen" aria-label="ゲーム設定">
+      <div class="setup-grid">
+        <div class="field">
+          <label>
+            最小文字数
+            <input id="minLetters" type="number" min="1" max="99" value="2" inputmode="numeric">
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            最大文字数
+            <input id="maxLetters" type="number" min="1" max="99" value="6" inputmode="numeric">
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            1人当たりの制限時間（秒）
+            <input id="secondsPerPlayer" type="number" min="5" max="3600" value="60" inputmode="numeric">
+          </label>
+        </div>
+      </div>
+      <div class="hint" id="setupMessage">最大文字数が出たターンだけ「以上」と表示します。</div>
+      <button class="primary" id="startButton" type="button">ゲーム開始</button>
+    </section>
+
+    <section class="screen game" id="gameScreen" aria-label="Moji Clock">
+      <div class="arena" id="arena">
+        <section class="player" id="player1Panel" style="--accent: var(--p1)">
+          <div class="player-name"><span>PLAYER 1</span><span id="p1TurnMark"></span></div>
+          <div class="timer" id="p1Timer">01:00</div>
+          <div class="status" id="p1Status">待機</div>
+        </section>
+
+        <button class="center-button" id="turnButton" type="button" aria-label="ターン終了">
+          <div class="turn-label" id="turnLabel">PLAYER 1 のターン</div>
+          <div class="moji" id="mojiDisplay">
+            <span class="moji-number" id="letterCount">4</span>
+            <span class="moji-unit" id="letterUnit">文字</span>
+          </div>
+          <div class="tap-copy" id="tapCopy">ターン終了でタップ</div>
+        </button>
+
+        <section class="player" id="player2Panel" style="--accent: var(--p2)">
+          <div class="player-name"><span>PLAYER 2</span><span id="p2TurnMark"></span></div>
+          <div class="timer" id="p2Timer">01:00</div>
+          <div class="status" id="p2Status">待機</div>
+        </section>
+      </div>
+
+      <div class="controls">
+        <button class="control" id="pauseButton" type="button">一時停止</button>
+        <button class="control" id="newMojiButton" type="button">文字数変更</button>
+        <button class="control danger" id="resetButton" type="button">リセット</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const els = {
+        setupScreen: document.getElementById("setupScreen"),
+        gameScreen: document.getElementById("gameScreen"),
+        topHint: document.getElementById("topHint"),
+        setupMessage: document.getElementById("setupMessage"),
+        minLetters: document.getElementById("minLetters"),
+        maxLetters: document.getElementById("maxLetters"),
+        secondsPerPlayer: document.getElementById("secondsPerPlayer"),
+        startButton: document.getElementById("startButton"),
+        arena: document.getElementById("arena"),
+        player1Panel: document.getElementById("player1Panel"),
+        player2Panel: document.getElementById("player2Panel"),
+        p1Timer: document.getElementById("p1Timer"),
+        p2Timer: document.getElementById("p2Timer"),
+        p1Status: document.getElementById("p1Status"),
+        p2Status: document.getElementById("p2Status"),
+        p1TurnMark: document.getElementById("p1TurnMark"),
+        p2TurnMark: document.getElementById("p2TurnMark"),
+        turnButton: document.getElementById("turnButton"),
+        turnLabel: document.getElementById("turnLabel"),
+        letterCount: document.getElementById("letterCount"),
+        letterUnit: document.getElementById("letterUnit"),
+        tapCopy: document.getElementById("tapCopy"),
+        pauseButton: document.getElementById("pauseButton"),
+        newMojiButton: document.getElementById("newMojiButton"),
+        resetButton: document.getElementById("resetButton")
+      };
+
+      const state = {
+        minLetters: 2,
+        maxLetters: 6,
+        secondsPerPlayer: 60,
+        remaining: [60, 60],
+        activePlayer: 0,
+        currentLetters: 4,
+        running: false,
+        paused: false,
+        winner: null,
+        lastTickAt: 0,
+        tickId: 0
+      };
+
+      function readPositiveInt(input) {
+        const value = Number.parseInt(input.value, 10);
+        return Number.isFinite(value) ? value : NaN;
+      }
+
+      function validateSettings() {
+        const minLetters = readPositiveInt(els.minLetters);
+        const maxLetters = readPositiveInt(els.maxLetters);
+        const secondsPerPlayer = readPositiveInt(els.secondsPerPlayer);
+
+        if (!Number.isInteger(minLetters) || minLetters < 1) {
+          return "最小文字数は1以上にしてください。";
+        }
+        if (!Number.isInteger(maxLetters) || maxLetters < minLetters) {
+          return "最大文字数は最小文字数以上にしてください。";
+        }
+        if (!Number.isInteger(secondsPerPlayer) || secondsPerPlayer < 5) {
+          return "制限時間は5秒以上にしてください。";
+        }
+        return "";
+      }
+
+      function randomLetters() {
+        const spread = state.maxLetters - state.minLetters + 1;
+        return state.minLetters + Math.floor(Math.random() * spread);
+      }
+
+      function formatTime(totalSeconds) {
+        const safeSeconds = Math.max(0, Math.ceil(totalSeconds));
+        const minutes = Math.floor(safeSeconds / 60);
+        const seconds = safeSeconds % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      function renderTimers() {
+        els.p1Timer.textContent = formatTime(state.remaining[0]);
+        els.p2Timer.textContent = formatTime(state.remaining[1]);
+      }
+
+      function renderMoji() {
+        els.letterCount.textContent = String(state.currentLetters);
+        els.letterUnit.textContent = state.currentLetters === state.maxLetters ? "文字以上" : "文字";
+      }
+
+      function renderTurn() {
+        const playerNumber = state.activePlayer + 1;
+        els.turnLabel.textContent = `PLAYER ${playerNumber} のターン`;
+        els.player1Panel.classList.toggle("active-turn", state.activePlayer === 0);
+        els.player2Panel.classList.toggle("active-turn", state.activePlayer === 1);
+        els.p1TurnMark.textContent = state.activePlayer === 0 ? "TURN" : "";
+        els.p2TurnMark.textContent = state.activePlayer === 1 ? "TURN" : "";
+        els.p1Status.textContent = state.activePlayer === 0 ? "考え中" : "待機";
+        els.p2Status.textContent = state.activePlayer === 1 ? "考え中" : "待機";
+      }
+
+      function renderRunState() {
+        els.arena.classList.toggle("paused", state.paused);
+        els.pauseButton.textContent = state.paused ? "再開" : "一時停止";
+        els.tapCopy.textContent = state.winner ? `PLAYER ${state.winner} 勝利` : state.running ? "ターン終了でタップ" : "時間切れ";
+        els.turnButton.disabled = !state.running || state.paused;
+        els.newMojiButton.disabled = !state.running || state.paused;
+      }
+
+      function render() {
+        renderTimers();
+        renderMoji();
+        renderTurn();
+        renderRunState();
+      }
+
+      function stopTimer() {
+        if (state.tickId) {
+          window.cancelAnimationFrame(state.tickId);
+          state.tickId = 0;
+        }
+      }
+
+      function finishGame() {
+        state.running = false;
+        state.paused = false;
+        stopTimer();
+        const loser = state.activePlayer + 1;
+        const winner = state.activePlayer === 0 ? 2 : 1;
+        state.winner = winner;
+        els.topHint.textContent = `PLAYER ${winner} 勝利`;
+        els.turnLabel.textContent = `PLAYER ${loser} 時間切れ`;
+        els.tapCopy.classList.add("finished");
+        els.p1Status.textContent = state.activePlayer === 0 ? "時間切れ" : "勝ち";
+        els.p2Status.textContent = state.activePlayer === 1 ? "時間切れ" : "勝ち";
+        renderTimers();
+        renderRunState();
+      }
+
+      function tick(now) {
+        if (!state.running || state.paused) {
+          state.lastTickAt = now;
+          state.tickId = window.requestAnimationFrame(tick);
+          return;
+        }
+
+        const elapsed = Math.max(0, (now - state.lastTickAt) / 1000);
+        state.lastTickAt = now;
+        state.remaining[state.activePlayer] -= elapsed;
+
+        if (state.remaining[state.activePlayer] <= 0) {
+          state.remaining[state.activePlayer] = 0;
+          finishGame();
+          return;
+        }
+
+        renderTimers();
+        state.tickId = window.requestAnimationFrame(tick);
+      }
+
+      function startTimer() {
+        stopTimer();
+        state.lastTickAt = performance.now();
+        state.tickId = window.requestAnimationFrame(tick);
+      }
+
+      function switchTurn() {
+        if (!state.running || state.paused) return;
+        state.activePlayer = state.activePlayer === 0 ? 1 : 0;
+        state.currentLetters = randomLetters();
+        state.lastTickAt = performance.now();
+        els.topHint.textContent = `PLAYER ${state.activePlayer + 1}`;
+        render();
+      }
+
+      function startGame() {
+        const error = validateSettings();
+        if (error) {
+          els.setupMessage.textContent = error;
+          els.setupMessage.classList.add("error");
+          return;
+        }
+
+        state.minLetters = readPositiveInt(els.minLetters);
+        state.maxLetters = readPositiveInt(els.maxLetters);
+        state.secondsPerPlayer = readPositiveInt(els.secondsPerPlayer);
+        state.remaining = [state.secondsPerPlayer, state.secondsPerPlayer];
+        state.activePlayer = 0;
+        state.currentLetters = randomLetters();
+        state.running = true;
+        state.paused = false;
+        state.winner = null;
+
+        els.setupScreen.classList.remove("active");
+        els.gameScreen.classList.add("active");
+        els.setupMessage.classList.remove("error");
+        els.tapCopy.classList.remove("finished");
+        els.topHint.textContent = "PLAYER 1";
+
+        render();
+        startTimer();
+      }
+
+      function resetGame() {
+        stopTimer();
+        state.running = false;
+        state.paused = false;
+        state.winner = null;
+        els.gameScreen.classList.remove("active");
+        els.setupScreen.classList.add("active");
+        els.topHint.textContent = "条件を決めて開始";
+        els.setupMessage.textContent = "最大文字数が出たターンだけ「以上」と表示します。";
+        els.setupMessage.classList.remove("error");
+      }
+
+      function togglePause() {
+        if (!state.running) return;
+        state.paused = !state.paused;
+        state.lastTickAt = performance.now();
+        renderRunState();
+      }
+
+      function rerollMoji() {
+        if (!state.running || state.paused) return;
+        state.currentLetters = randomLetters();
+        renderMoji();
+      }
+
+      els.startButton.addEventListener("click", startGame);
+      els.turnButton.addEventListener("click", switchTurn);
+      els.player1Panel.addEventListener("click", switchTurn);
+      els.player2Panel.addEventListener("click", switchTurn);
+      els.pauseButton.addEventListener("click", togglePause);
+      els.newMojiButton.addEventListener("click", rerollMoji);
+      els.resetButton.addEventListener("click", resetGame);
+
+      [els.minLetters, els.maxLetters, els.secondsPerPlayer].forEach((input) => {
+        input.addEventListener("input", () => {
+          const error = validateSettings();
+          els.setupMessage.textContent = error || "最大文字数が出たターンだけ「以上」と表示します。";
+          els.setupMessage.classList.toggle("error", Boolean(error));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

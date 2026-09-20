@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="横画面で向かい合って遊べるマンカラ・ベーシック">
+    <title>マンカラ・ベーシック</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="setup-panel" id="setup-panel" aria-labelledby="setup-title">
+        <div>
+          <p class="eyebrow">Mancala Basic</p>
+          <h1 id="setup-title">マンカラ・ベーシック</h1>
+          <p class="setup-copy">
+            自分の陣地の石を先に空にした方が勝ち。最後の石がゴールで止まると、もう一度同じ人の番です。
+          </p>
+        </div>
+
+        <form class="setup-form" id="setup-form">
+          <label class="field">
+            <span>各ポケットの石</span>
+            <input id="stone-count" name="stone-count" type="number" min="1" max="12" value="4" inputmode="numeric">
+          </label>
+
+          <fieldset class="field">
+            <legend>先攻</legend>
+            <div class="segmented">
+              <label>
+                <input type="radio" name="first-player" value="0" checked>
+                <span>Aさん</span>
+              </label>
+              <label>
+                <input type="radio" name="first-player" value="1">
+                <span>Bさん</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <button class="primary-button" type="submit">ゲーム開始</button>
+        </form>
+      </section>
+
+      <section class="game-screen is-hidden" id="game-screen" aria-label="マンカラ盤">
+        <div class="player-zone player-zone-top" data-player-zone="1">
+          <div class="player-status">
+            <span class="player-name">Bさん</span>
+            <span class="turn-badge" data-turn-badge="1">手番</span>
+          </div>
+          <div class="player-pockets" id="top-pockets"></div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="goal goal-b" aria-live="polite">
+            <span>Bゴール</span>
+            <strong id="goal-b">0</strong>
+          </div>
+
+          <div class="center-panel">
+            <p class="message" id="message">Aさんの番です</p>
+            <p class="sub-message" id="sub-message">石が入っている自分のポケットを選んでください。</p>
+            <div class="controls">
+              <button class="ghost-button" id="restart-button" type="button">最初から</button>
+              <button class="ghost-button" id="same-settings-button" type="button">同じ設定で再戦</button>
+            </div>
+          </div>
+
+          <div class="goal goal-a" aria-live="polite">
+            <span>Aゴール</span>
+            <strong id="goal-a">0</strong>
+          </div>
+        </div>
+
+        <div class="player-zone player-zone-bottom" data-player-zone="0">
+          <div class="player-pockets" id="bottom-pockets"></div>
+          <div class="player-status">
+            <span class="player-name">Aさん</span>
+            <span class="turn-badge" data-turn-badge="0">手番</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ドット&ボックス</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20242a;
+      --muted: #667085;
+      --paper: #fbfaf7;
+      --panel: #ffffff;
+      --line: #d7dde6;
+      --p1: #e04f3f;
+      --p1-soft: #ffe2de;
+      --p2: #246bba;
+      --p2-soft: #dcecff;
+      --accent: #16856f;
+      --shadow: 0 18px 50px rgba(32, 36, 42, .12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(135deg, rgba(224, 79, 63, .14), transparent 34%),
+        linear-gradient(225deg, rgba(36, 107, 186, .16), transparent 36%),
+        var(--paper);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-end;
+      padding: 8px 0 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.3rem);
+      line-height: .95;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel,
+    .board-shell {
+      background: rgba(255, 255, 255, .88);
+      border: 1px solid rgba(32, 36, 42, .12);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      border-radius: 8px;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 750;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(22, 133, 111, .18);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: var(--ink);
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .14s ease, opacity .14s ease, background .14s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: #eef1f5;
+      color: var(--ink);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .48;
+      transform: none;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .player {
+      border-radius: 8px;
+      border: 2px solid transparent;
+      padding: 12px;
+      background: #f5f7fa;
+      min-width: 0;
+    }
+
+    .player.active {
+      background: var(--p1-soft);
+      border-color: var(--p1);
+    }
+
+    .player[data-player="1"].active {
+      background: var(--p2-soft);
+      border-color: var(--p2);
+    }
+
+    .player-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 800;
+    }
+
+    .score {
+      margin-top: 4px;
+      font-size: 2rem;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .status {
+      min-height: 64px;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f5f7fa;
+      border: 1px solid var(--line);
+    }
+
+    .status strong {
+      font-size: 1.08rem;
+    }
+
+    .status span {
+      color: var(--muted);
+      font-size: .92rem;
+      font-weight: 650;
+    }
+
+    .board-shell {
+      border-radius: 8px;
+      padding: clamp(10px, 2vw, 20px);
+    }
+
+    .board-frame {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      min-height: 300px;
+      max-height: calc(100vh - 140px);
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .74), rgba(255, 255, 255, .34)),
+        repeating-linear-gradient(45deg, rgba(32, 36, 42, .035) 0 8px, transparent 8px 16px);
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .box {
+      stroke: transparent;
+      opacity: .72;
+      transition: opacity .2s ease;
+    }
+
+    .edge-hit {
+      stroke: transparent;
+      stroke-linecap: round;
+      cursor: pointer;
+    }
+
+    .edge-line {
+      stroke: rgba(32, 36, 42, .2);
+      stroke-width: 7;
+      stroke-linecap: round;
+      pointer-events: none;
+      transition: stroke .15s ease, stroke-width .15s ease;
+    }
+
+    .edge.available:hover + .edge-line,
+    .edge.available:focus + .edge-line {
+      stroke: var(--accent);
+      stroke-width: 10;
+    }
+
+    .edge.claimed-p0 + .edge-line {
+      stroke: var(--p1);
+      stroke-width: 9;
+    }
+
+    .edge.claimed-p1 + .edge-line {
+      stroke: var(--p2);
+      stroke-width: 9;
+    }
+
+    .dot {
+      fill: var(--ink);
+      stroke: white;
+      stroke-width: 4;
+      pointer-events: none;
+    }
+
+    .box-label {
+      font-size: 28px;
+      font-weight: 900;
+      fill: rgba(32, 36, 42, .58);
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .game-over {
+      animation: settle .45s ease both;
+    }
+
+    @keyframes settle {
+      from {
+        transform: scale(.98);
+      }
+      to {
+        transform: scale(1);
+      }
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        padding: 12px;
+      }
+
+      header {
+        display: block;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        order: 2;
+      }
+
+      .board-shell {
+        order: 1;
+      }
+
+      .board-frame {
+        min-height: auto;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .button-row,
+      .scoreboard {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>ドット&ボックス</h1>
+        <p class="subtitle">線を引いて、マスを取る。</p>
+      </div>
+    </header>
+
+    <section class="layout" aria-label="ゲーム">
+      <aside class="panel">
+        <div class="scoreboard" aria-label="スコア">
+          <div class="player active" data-player="0">
+            <div class="player-name" id="scoreName0">プレイヤー1</div>
+            <div class="score" id="score0">0</div>
+          </div>
+          <div class="player" data-player="1">
+            <div class="player-name" id="scoreName1">プレイヤー2</div>
+            <div class="score" id="score1">0</div>
+          </div>
+        </div>
+
+        <div class="status" aria-live="polite">
+          <strong id="statusMain">プレイヤー1の番</strong>
+          <span id="statusSub">点と点の間をタップ</span>
+        </div>
+
+        <div class="field">
+          <label for="player0">プレイヤー1</label>
+          <input id="player0" maxlength="16" value="プレイヤー1">
+        </div>
+
+        <div class="field">
+          <label for="player1">プレイヤー2</label>
+          <input id="player1" maxlength="16" value="プレイヤー2">
+        </div>
+
+        <div class="field">
+          <label for="size">盤面</label>
+          <select id="size">
+            <option value="3">3 x 3</option>
+            <option value="4" selected>4 x 4</option>
+            <option value="5">5 x 5</option>
+            <option value="6">6 x 6</option>
+          </select>
+        </div>
+
+        <div class="button-row">
+          <button id="newGame" type="button">新しく開始</button>
+          <button id="undo" class="secondary" type="button" disabled>1手戻す</button>
+        </div>
+      </aside>
+
+      <section class="board-shell">
+        <div class="board-frame">
+          <svg id="board" viewBox="0 0 640 640" role="img" aria-label="ドット&ボックスの盤面"></svg>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const board = document.querySelector("#board");
+    const sizeSelect = document.querySelector("#size");
+    const nameInputs = [
+      document.querySelector("#player0"),
+      document.querySelector("#player1")
+    ];
+    const scoreEls = [
+      document.querySelector("#score0"),
+      document.querySelector("#score1")
+    ];
+    const scoreNameEls = [
+      document.querySelector("#scoreName0"),
+      document.querySelector("#scoreName1")
+    ];
+    const playerEls = [...document.querySelectorAll(".player")];
+    const statusMain = document.querySelector("#statusMain");
+    const statusSub = document.querySelector("#statusSub");
+    const newGameButton = document.querySelector("#newGame");
+    const undoButton = document.querySelector("#undo");
+
+    const state = {
+      boxes: 4,
+      current: 0,
+      scores: [0, 0],
+      edges: new Map(),
+      owners: [],
+      history: [],
+      finished: false
+    };
+
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    function playerNames() {
+      return nameInputs.map((input, index) => input.value.trim() || `プレイヤー${index + 1}`);
+    }
+
+    function edgeKey(type, row, col) {
+      return `${type}-${row}-${col}`;
+    }
+
+    function boxEdges(row, col) {
+      return [
+        edgeKey("h", row, col),
+        edgeKey("h", row + 1, col),
+        edgeKey("v", row, col),
+        edgeKey("v", row, col + 1)
+      ];
+    }
+
+    function boxIsComplete(row, col, edges = state.edges) {
+      return boxEdges(row, col).every((key) => edges.has(key));
+    }
+
+    function neighboringBoxes(type, row, col) {
+      const boxes = [];
+      if (type === "h") {
+        if (row > 0) boxes.push([row - 1, col]);
+        if (row < state.boxes) boxes.push([row, col]);
+      } else {
+        if (col > 0) boxes.push([row, col - 1]);
+        if (col < state.boxes) boxes.push([row, col]);
+      }
+      return boxes;
+    }
+
+    function setAttrs(el, attrs) {
+      Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+      return el;
+    }
+
+    function makeEl(tag, attrs) {
+      return setAttrs(document.createElementNS(svgNS, tag), attrs);
+    }
+
+    function resetGame() {
+      state.boxes = Number(sizeSelect.value);
+      state.current = 0;
+      state.scores = [0, 0];
+      state.edges = new Map();
+      state.owners = Array.from({ length: state.boxes }, () => Array(state.boxes).fill(null));
+      state.history = [];
+      state.finished = false;
+      board.classList.remove("game-over");
+      render();
+    }
+
+    function drawBoxLayer(group, pad, gap) {
+      for (let row = 0; row < state.boxes; row += 1) {
+        for (let col = 0; col < state.boxes; col += 1) {
+          const owner = state.owners[row][col];
+          const rect = makeEl("rect", {
+            x: pad + col * gap + 8,
+            y: pad + row * gap + 8,
+            width: gap - 16,
+            height: gap - 16,
+            rx: 8,
+            class: "box",
+            fill: owner === 0 ? "var(--p1-soft)" : owner === 1 ? "var(--p2-soft)" : "transparent"
+          });
+          group.appendChild(rect);
+
+          if (owner !== null) {
+            const label = makeEl("text", {
+              x: pad + col * gap + gap / 2,
+              y: pad + row * gap + gap / 2,
+              class: "box-label"
+            });
+            label.textContent = owner === 0 ? "1" : "2";
+            group.appendChild(label);
+          }
+        }
+      }
+    }
+
+    function drawEdges(group, pad, gap) {
+      const hitWidth = Math.max(28, gap * .32);
+
+      for (let row = 0; row <= state.boxes; row += 1) {
+        for (let col = 0; col < state.boxes; col += 1) {
+          drawEdge(group, "h", row, col, pad + col * gap, pad + row * gap, pad + (col + 1) * gap, pad + row * gap, hitWidth);
+        }
+      }
+
+      for (let row = 0; row < state.boxes; row += 1) {
+        for (let col = 0; col <= state.boxes; col += 1) {
+          drawEdge(group, "v", row, col, pad + col * gap, pad + row * gap, pad + col * gap, pad + (row + 1) * gap, hitWidth);
+        }
+      }
+    }
+
+    function drawEdge(group, type, row, col, x1, y1, x2, y2, hitWidth) {
+      const key = edgeKey(type, row, col);
+      const owner = state.edges.get(key);
+      const hit = makeEl("line", {
+        x1, y1, x2, y2,
+        "stroke-width": hitWidth,
+        class: `edge edge-hit ${owner === undefined && !state.finished ? "available" : `claimed-p${owner}`}`,
+        "data-key": key,
+        "data-type": type,
+        "data-row": row,
+        "data-col": col,
+        tabindex: owner === undefined && !state.finished ? 0 : -1
+      });
+      const line = makeEl("line", {
+        x1, y1, x2, y2,
+        class: "edge-line"
+      });
+      group.appendChild(hit);
+      group.appendChild(line);
+    }
+
+    function drawDots(group, pad, gap) {
+      for (let row = 0; row <= state.boxes; row += 1) {
+        for (let col = 0; col <= state.boxes; col += 1) {
+          group.appendChild(makeEl("circle", {
+            cx: pad + col * gap,
+            cy: pad + row * gap,
+            r: Math.max(7, gap * .07),
+            class: "dot"
+          }));
+        }
+      }
+    }
+
+    function render() {
+      const names = playerNames();
+      const pad = 58;
+      const gap = (640 - pad * 2) / state.boxes;
+
+      board.replaceChildren();
+      const layer = makeEl("g", {});
+      drawBoxLayer(layer, pad, gap);
+      drawEdges(layer, pad, gap);
+      drawDots(layer, pad, gap);
+      board.appendChild(layer);
+
+      names.forEach((name, index) => {
+        scoreNameEls[index].textContent = name;
+        scoreEls[index].textContent = state.scores[index];
+        playerEls[index].classList.toggle("active", index === state.current && !state.finished);
+      });
+
+      undoButton.disabled = state.history.length === 0;
+
+      if (state.finished) {
+        const [a, b] = state.scores;
+        statusMain.textContent = a === b ? "引き分け" : `${names[a > b ? 0 : 1]}の勝ち`;
+        statusSub.textContent = `${a} - ${b}`;
+        board.classList.add("game-over");
+        return;
+      }
+
+      statusMain.textContent = `${names[state.current]}の番`;
+      statusSub.textContent = "点と点の間をタップ";
+    }
+
+    function claimEdge(target) {
+      if (state.finished) return;
+
+      const key = target.dataset.key;
+      if (!key || state.edges.has(key)) return;
+
+      const type = target.dataset.type;
+      const row = Number(target.dataset.row);
+      const col = Number(target.dataset.col);
+      const player = state.current;
+      const closed = [];
+
+      state.edges.set(key, player);
+
+      neighboringBoxes(type, row, col).forEach(([boxRow, boxCol]) => {
+        if (state.owners[boxRow][boxCol] === null && boxIsComplete(boxRow, boxCol)) {
+          state.owners[boxRow][boxCol] = player;
+          state.scores[player] += 1;
+          closed.push([boxRow, boxCol]);
+        }
+      });
+
+      if (closed.length === 0) {
+        state.current = 1 - state.current;
+      }
+
+      state.history.push({ key, player, closed, nextPlayer: state.current });
+
+      const totalBoxes = state.boxes * state.boxes;
+      if (state.scores[0] + state.scores[1] === totalBoxes) {
+        state.finished = true;
+      }
+
+      render();
+    }
+
+    function undo() {
+      const last = state.history.pop();
+      if (!last) return;
+
+      state.finished = false;
+      board.classList.remove("game-over");
+      state.edges.delete(last.key);
+      last.closed.forEach(([row, col]) => {
+        state.owners[row][col] = null;
+        state.scores[last.player] -= 1;
+      });
+      state.current = last.player;
+      render();
+    }
+
+    board.addEventListener("click", (event) => {
+      const target = event.target.closest(".edge-hit");
+      if (target) claimEdge(target);
+    });
+
+    board.addEventListener("keydown", (event) => {
+      if ((event.key === "Enter" || event.key === " ") && event.target.classList.contains("edge-hit")) {
+        event.preventDefault();
+        claimEdge(event.target);
+      }
+    });
+
+    nameInputs.forEach((input) => input.addEventListener("input", render));
+    newGameButton.addEventListener("click", resetGame);
+    undoButton.addEventListener("click", undo);
+    sizeSelect.addEventListener("change", resetGame);
+
+    resetGame();
+  </script>
+</body>
+</html>
