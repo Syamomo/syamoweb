@@ -20,7 +20,7 @@ const pocketIndexes = [
 const goalIndexes = [6, 13];
 const sowDelayMs = 185;
 
-let state = createState(4, 0);
+let state = createState(3, 0);
 let audioContext = null;
 
 function createState(stonesPerPocket, firstPlayer) {
@@ -52,9 +52,8 @@ function createState(stonesPerPocket, firstPlayer) {
 }
 
 function renderPockets() {
+  // The top zone's 180-degree rotation already reverses the visual order.
   topPockets.innerHTML = pocketIndexes[1]
-    .slice()
-    .reverse()
     .map((index) => renderPocket(index, 1))
     .join("");
 
@@ -267,7 +266,7 @@ function playWinSound() {
 setupForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(setupForm);
-  const stonesPerPocket = Math.max(1, Math.min(12, Number(stoneCountInput.value) || 4));
+  const stonesPerPocket = Math.max(1, Math.min(12, Number(stoneCountInput.value) || 3));
   const firstPlayer = Number(data.get("first-player")) || 0;
   stoneCountInput.value = String(stonesPerPocket);
   startGame(stonesPerPocket, firstPlayer);
