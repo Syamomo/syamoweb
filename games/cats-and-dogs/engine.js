@@ -16,6 +16,30 @@ export class Game {
     this.winLine = [];
     this.winReason = null;
     this.moves = 0;
+    this.history = [];
+    this.pendingSnapshot = null;
+  }
+  snapshot() {
+    return {board:this.board.map(stack => [...stack]), reserve:[...this.reserve], turn:this.turn, moves:this.moves};
+  }
+  completeMove() {
+    this.history.push(this.pendingSnapshot);
+    this.pendingSnapshot = null;
+  }
+  canUndo() { return this.history.length > 0 && (!this.held || !!this.winner); }
+  undo() {
+    if (!this.canUndo()) return {ok:false};
+    const previous = this.history.pop();
+    this.board = previous.board.map(stack => [...stack]);
+    this.reserve = new Set(previous.reserve);
+    this.turn = previous.turn;
+    this.moves = previous.moves;
+    this.held = null;
+    this.pendingSnapshot = null;
+    this.winner = null;
+    this.winLine = [];
+    this.winReason = null;
+    return {ok:true};
   }
   top(cell) { return pieceById(this.board[cell]?.at(-1)); }
   locate(id) {
@@ -37,10 +61,12 @@ export class Game {
     if (this.held) return {ok:true, resumed:true};
     const piece = pieceById(id);
     const from = this.locate(id);
+    this.pendingSnapshot = this.snapshot();
     this.held = {piece, from};
     if (from === null) this.reserve.delete(id);
     else this.board[from].pop();
     if (from !== null) this.checkWinner('uncover');
+    if (this.winner) this.completeMove();
     return {ok:true, winner:this.winner};
   }
   canDrop(cell) {
@@ -54,12 +80,14 @@ export class Game {
     this.moves++;
     this.checkWinner('line');
     if (!this.winner) this.turn = other(this.turn);
+    this.completeMove();
     return {ok:true, winner:this.winner};
   }
   cancelReserve() {
     if (!this.held || this.held.from !== null || this.winner) return false;
     this.reserve.add(this.held.piece.id);
     this.held = null;
+    this.pendingSnapshot = null;
     return true;
   }
   checkWinner(reason) {
@@ -75,7 +103,7 @@ export class Game {
     return null;
   }
   visibleState() {
-    return {turn:this.turn, moves:this.moves, winner:this.winner, winReason:this.winReason,
+    return {turn:this.turn, moves:this.moves, winner:this.winner, winReason:this.winReason, canUndo:this.canUndo(),
       board:this.board.map((_,cell) => this.top(cell) ?? null),
       reserve:PIECES.filter(piece => this.reserve.has(piece.id)),
       held:this.held ? {...this.held} : null};

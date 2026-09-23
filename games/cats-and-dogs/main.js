@@ -26,6 +26,8 @@ function update(message) {
   $('move-count').textContent=`${game.moves+1}手目`;
   $('instruction').textContent=message??(game.winner?'もういちど、勝負しよう！':game.held?'持ち上げた駒を、別のマスへ動かしてね':'手元や盤上の自分の駒を、マスまでドラッグ');
   $('winner-panel').hidden=!game.winner;
+  $('undo-button').disabled=!game.canUndo();
+  $('undo-button').title=game.held&&!game.winner?'駒を置き終わってから戻せます':game.canUndo()?'1手戻す':'まだ戻せる手がありません';
   if(game.winner){
     $('winner-title').textContent=`${name(game.winner)}の勝ち！`;
     $('winner-description').textContent=game.winReason==='uncover'?'持ち上げた下の駒で、3つ並びました。':'見えている駒が、3つ並びました。';
@@ -128,6 +130,14 @@ canvas.addEventListener('keydown',event=>{
 
 function openDialog(id){endGesture(false,{});$(id).showModal();}
 $('help-button').addEventListener('click',()=>openDialog('help-dialog'));
+$('undo-button').addEventListener('click',()=>{
+  if(!game.canUndo())return;
+  endGesture(false,{});
+  if(!game.undo().ok)return;
+  keyboardCell=4;
+  if(scene){scene.draggingId=null;scene.hover=-1;scene.keyboardCell=-1;}
+  update(`1手戻したよ。${name(game.turn)}のばんです`);
+});
 $('reset-button').addEventListener('click',()=>{if(game.moves||game.held)openDialog('reset-dialog');else restart('cat');});
 for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',()=>button.closest('dialog').close());
 for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eee9df">
+  <meta name="description" content="木の盤を囲んで、ナインメンズモリス。やさしい5段階のCPU対戦と、同じ端末での2人対戦。">
+  <title>ナインメンズモリス — SYAMOWEB</title>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar"><a class="brand" href="../../">SYAMOWEB <span>/ BOARD GAMES</span></a><button id="rules-open" class="quiet-button">遊び方 <span aria-hidden="true">↗</span></button></header>
+    <div class="heading"><div><p class="eyebrow">NINE MEN’S MORRIS</p><h1>ナインメンズモリス<span class="title-dot">.</span></h1></div><p class="tagline">9つの駒。3つの並び。<br>一手が、流れを変える。</p></div>
+    <main class="layout">
+      <section class="board-area" aria-label="対局の盤面">
+        <div class="board-top"><span id="board-label">THE MORRIS BOARD</span><span id="move-count">24の交点・9つの駒</span></div>
+        <div id="mobile-status" class="mobile-status" hidden><strong id="mobile-title"></strong><span id="mobile-detail"></span></div>
+        <div class="board-frame">
+          <div id="board" class="board" role="group" aria-label="ナインメンズモリスの盤。地点を選ぶにはTabまたは矢印キー、決定はEnter。">
+            <svg id="board-lines" viewBox="0 0 700 700" aria-hidden="true"><g id="edges"></g><g id="mill-lines"></g><g class="engraving"><text x="350" y="345">NINE MEN’S</text><text x="350" y="370">MORRIS</text></g></svg>
+          </div>
+        </div>
+        <div class="board-bottom"><span><i class="small-dot"></i> 白が先手</span><span>ゆっくり、自分のペースで。</span></div>
+      </section>
+      <aside class="side">
+        <section id="setup" class="panel">
+          <p class="eyebrow">LET’S PLAY</p><h2>盤を囲もう。</h2><p class="intro-text">ひとりで練習する日も、<br>ふたりでじっくり考える日も。</p>
+          <form id="setup-form">
+            <fieldset><legend>対戦相手</legend><div class="segmented"><label><input type="radio" name="mode" value="cpu" checked><span>コンピューター</span></label><label><input type="radio" name="mode" value="local"><span>ふたりで対戦</span></label></div></fieldset>
+            <div id="cpu-options"><label class="field-label" for="level">CPUの強さ</label><select id="level"><option value="1">Lv.1　はじめて</option><option value="2">Lv.2　やさしい</option><option value="3">Lv.3　すこし考える</option><option value="4">Lv.4　じっくり考える</option><option value="5">Lv.5　チャレンジ</option></select><p class="field-note">まずはLv.1から。気軽に一局どうぞ。</p>
+              <fieldset><legend>あなたの駒</legend><div class="segmented colors"><label><input type="radio" name="color" value="1" checked><span><i class="stone white"></i> 白・先手</span></label><label><input type="radio" name="color" value="2"><span><i class="stone black"></i> 黒・後手</span></label></div></fieldset>
+            </div>
+            <p id="local-note" class="local-note" hidden>同じ画面で交互に操作します。<br>白のプレイヤーから始めます。</p>
+            <button class="primary" type="submit">対局をはじめる <span aria-hidden="true">→</span></button>
+          </form>
+          <p class="setup-note">持ち時間なし · フライングあり</p>
+        </section>
+        <section id="match" class="panel match-panel" hidden>
+          <div class="match-heading"><p class="eyebrow" id="match-kind"></p><span class="live-dot" aria-hidden="true"></span></div>
+          <div class="phases" aria-label="現在の段階"><span data-phase="place"><b>01</b> 配置</span><span data-phase="move"><b>02</b> 移動</span><span data-phase="fly"><b>03</b> 飛行</span></div>
+          <div class="status" aria-live="polite" aria-atomic="true"><p id="status-kicker" class="eyebrow"></p><h2 id="status-title"></h2><p id="status-detail"></p></div>
+          <div class="players"><div id="player-1" class="player"><div class="player-heading"><i class="stone white"></i><strong id="name-1"></strong><span id="turn-1" class="turn-badge">手番</span></div><div class="inventory"><span id="pieces-1"></span><span id="lost-1"></span></div><div id="reserve-1" class="reserve" aria-label="白の未配置の駒"></div></div>
+          <div id="player-2" class="player"><div class="player-heading"><i class="stone black"></i><strong id="name-2"></strong><span id="turn-2" class="turn-badge">手番</span></div><div class="inventory"><span id="pieces-2"></span><span id="lost-2"></span></div><div id="reserve-2" class="reserve" aria-label="黒の未配置の駒"></div></div></div>
+          <p id="notice" class="notice" role="status"></p>
+          <button id="retry" class="primary" hidden>CPUの計算を再試行</button>
+          <div id="finished-actions" hidden><button id="again" class="primary">もう一局あそぶ <span aria-hidden="true">→</span></button></div>
+          <div class="match-actions"><button id="new-game" class="secondary">設定を変える</button><button id="resign" class="text-button">投了する</button></div>
+        </section>
+        <div class="rule-card"><span class="rule-icon" aria-hidden="true">● ─ ● ─ ●</span><div><strong>3つ並べて、ひとつ取る。</strong><p>線に沿って自分の駒が3つ並ぶと<br>「ミル」。相手の駒を1つ取れます。</p></div></div>
+      </aside>
+    </main>
+    <footer><span>A QUIET GAME OF STRATEGY</span><span>ナインメンズモリス / 1–2 PLAYERS</span></footer>
+  </div>
+  <dialog id="rules-dialog" aria-labelledby="rules-title"><div class="dialog-heading"><p class="eyebrow">HOW TO PLAY</p><button id="rules-close" class="close-button" aria-label="遊び方を閉じる">×</button></div><h2 id="rules-title">ナインメンズモリスの遊び方</h2>
+    <ol class="rules-list"><li><strong>交互に、駒を置く。</strong><p>白が先手。空いている交点を押して、各9個の駒を1個ずつ置きます。両者が9個すべて置き終わるまでは移動できません。</p></li><li><strong>3つ並べて、相手の駒を取る。</strong><p>盤の線に沿う3つの交点に自分の駒が並ぶとミルです。相手の駒を押して1個取り除きます。ミル内の駒は、相手の全駒がミル内にある場合だけ取れます。斜めや中央をまたぐ並びはミルになりません。</p></li><li><strong>すべて置いたら、動かす。</strong><p>自分の駒、移動先の順に押します。線でつながる隣の空き地点へ1個動かせます。残り3個になった側は、どの空き地点へも移動できます（フライング）。ドラッグでも移動できます。</p></li><li><strong>相手を2個にするか、動けなくすれば勝ち。</strong><p>配置中は未配置の駒も残り個数に含みます。移動の手番で動けない場合も負けです。</p></li></ol>
+    <div class="rule-details"><strong>このゲームでの細かなルール</strong><p>一度崩したミルを作り直すたびに捕獲できます。2列同時にミルを完成させても捕獲は1個です。同じ手番・盤面・未配置数の局面が3回現れるか、移動段階で捕獲なしが50手（各25手）続くと自動で引き分けになります。</p><p>対局はページを開いている間だけ保持されます。</p><a href="https://nine-mens-morris.net/manual.html" target="_blank" rel="noreferrer">参考にした標準ルール ↗</a></div>
+  </dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><p class="eyebrow">YOUR GAME</p><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary">対局に戻る</button><button id="confirm-ok" class="primary">終了する</button></div></dialog>
+  <noscript>このゲームを遊ぶにはJavaScriptを有効にしてください。</noscript>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

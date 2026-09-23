@@ -11,3 +11,4 @@
 
 .masthead nav{flex-shrink:0}.masthead nav .quiet-button{white-space:nowrap}
 @media(max-width:360px){.masthead{flex-wrap:wrap;gap:12px}.masthead nav{margin-left:auto}}
+.masthead{flex-wrap:wrap}.masthead nav{max-width:100%;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}.quiet-button:disabled{opacity:.4;cursor:default}.quiet-button:disabled:hover{background:transparent}.quiet-button:disabled:active{transform:none}#undo-button:not(:disabled){border-color:#9dbab0;color:var(--cat);background:#eaf0e5}
