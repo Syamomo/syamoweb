@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efe9df">
+  <meta name="description" content="端末を挟んで、ふたりでバックギャモン。木製の盤と白黒の駒で楽しむ、1局ごとの対戦。">
+  <title>バックギャモン — SYAMOWEB</title>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-header">
+      <a class="brand" href="../../">SYAMOWEB<span> / </span></a>
+      <h1>バックギャモン</h1>
+      <span class="edition">ふたりで、向かい合って。</span>
+      <div class="header-actions"><button type="button" id="rules-button">遊び方</button><button type="button" id="reset-button">はじめから</button></div>
+    </header>
+    <main class="table" aria-label="2人用バックギャモン">
+      <section class="player-rail black-rail" id="black-rail" aria-label="黒の操作"></section>
+      <div class="board-frame">
+        <div class="board" id="board" aria-label="バックギャモンの盤"></div>
+      </div>
+      <section class="player-rail white-rail" id="white-rail" aria-label="白の操作"></section>
+    </main>
+    <footer class="page-footer"><span>駒を選ぶ → 移動先をタップ → 手番を確定</span><span>1局勝負<span class="separator"> · </span>2人用</span></footer>
+    <p class="portrait-note">横向きにすると、盤が大きくなって遊びやすくなります。</p>
+  </div>
+  <dialog id="rules-dialog" aria-labelledby="rules-title">
+    <div class="dialog-heading"><div><p class="eyebrow">HOW TO PLAY</p><h2 id="rules-title">ふたりで、バックギャモン。</h2></div><button type="button" data-close="rules-dialog">閉じる</button></div>
+    <p>白は画面の下側、黒は上側に座ります。黒の操作欄は、向かい側から読める向きです。先に15枚すべてを盤から上げると勝ちです。</p>
+    <ol class="rules-list">
+      <li><strong>先攻を決める</strong><br>1個ずつ振って、大きい目の人が先攻。その2つの出目で最初の手を進めます。同じ目なら振り直します。</li>
+      <li><strong>駒と移動先をタップ</strong><br>白は上段を左へ、下段を右へ。黒は下段を左へ、上段を右へ進みます（画面の下から見た方向）。出目1つにつき1回移動。ゾロ目は同じ数を4回使います。1枚を続けて動かすときも、1回ずつ移動先を選びます。</li>
+      <li><strong>使える出目は使い切る</strong><br>両方使えるなら両方を使います。片方しか使えず、どちらも選べるなら大きい目を使います。ゾロ目も可能な限り使います。使える手が残る移動先だけを選べます。</li>
+      <li><strong>ヒットとバーからの復帰</strong><br>相手が2枚以上いる場所には進めません。1枚ならヒットして中央のバーへ。バーに自分の駒があるときは、先に相手のホームへ戻します。戻れない場合は手番を終了します。</li>
+      <li><strong>ホームに集めて、上がる</strong><br>残りの駒がすべて自分のホーム6地点に入ると、対応する目で上げられます。出目より遠い駒がなければ、余った大きい目で最も遠い駒を上げられます。選んだ駒のあと、右端の「上がり」をタップします。</li>
+      <li><strong>Undoと手番の確定</strong><br>「1手戻す」で、今の手番の駒移動を1手ずつ取り消せます。すべて使い終わったら「手番を確定」。確定後は戻せません。サイコロを振り直すことはできません。</li>
+    </ol>
+    <p class="rule-note">1局ごとに勝敗を決めます。ダブリングキューブと累積得点はありません。勝ち方は通常勝ち・ギャモン・バックギャモンで表示します。</p>
+    <p class="rule-source"><a href="https://www.bkgm.com/rules.html" target="_blank" rel="noreferrer">参照した一般ルール ↗</a></p>
+  </dialog>
+  <dialog id="reset-dialog" aria-labelledby="reset-title">
+    <p class="eyebrow">NEW GAME</p><h2 id="reset-title">はじめから遊びますか？</h2>
+    <p>今の対局を終了して、駒を最初の配置に戻します。</p>
+    <div class="dialog-actions"><button type="button" data-close="reset-dialog">対局に戻る</button><button type="button" class="primary" id="confirm-reset">はじめから</button></div>
+  </dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
