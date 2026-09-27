@@ -1,10 +1,14 @@
 import { createGame, rollOpening, rollDice, legalMoves, playMove, undoMove, finishTurn, randomDie } from './engine.js';
+import { createDiceAnimator } from './dice-animation.js';
+import { createGameSounds } from './game-sounds.js';
 
 const $ = id => document.getElementById(id);
 const name = player => player === 'white' ? '白' : '黒';
 let game = createGame();
 let selected = null;
 let preferredDie = null;
+let rolling = null;
+let pendingRoll = null;
 const board = $('board');
 const points = new Map();
 const rails = {};
@@ -12,9 +16,54 @@ const bars = {};
 const trays = {};
 const resultNames = { single: '通常勝ち', gammon: 'ギャモン', backgammon: 'バックギャモン' };
 const pips = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
+const sounds = createGameSounds({ dice: $('dice-sound'), move: $('move-sound') });
+const diceAnimator = createDiceAnimator({
+  onFrame(frame) { rolling = frame; paintRollingDice(); },
+  onComplete(dice) {
+    const before = pendingRoll;
+    pendingRoll = null;
+    rolling = null;
+    if (!before || before !== game) return;
+    game = before.phase === 'opening' ? rollOpening(before, dice) : rollDice(before, dice);
+    render();
+  },
+});
+
+function pipHTML(value) {
+  return pips[value].map(n => `<i style="grid-area:${Math.ceil(n / 3)} / ${(n - 1) % 3 + 1}"></i>`).join('');
+}
+
+function startRoll() {
+  if (rolling || !['opening', 'roll'].includes(game.phase)) return;
+  // Decide the real dice once. All rolling faces are decorative and cannot reroll them.
+  const dice = [randomDie(), randomDie()];
+  pendingRoll = game;
+  rolling = { values: [1, 1], stopped: [false, false] };
+  selected = null;
+  preferredDie = null;
+  render();
+  sounds.playDice();
+  diceAnimator.start(dice);
+}
+
+function paintRollingDice() {
+  if (!rolling) return;
+  const message = currentMessage([]);
+  for (const ui of Object.values(rails)) {
+    if (ui.title.textContent !== message.title) ui.title.textContent = message.title;
+    if (ui.detail.textContent !== message.detail) ui.detail.textContent = message.detail;
+    [...ui.dice.children].forEach((die, index) => {
+      die.innerHTML = pipHTML(rolling.values[index]);
+      die.classList.toggle('is-rolling', !rolling.stopped[index]);
+      die.classList.toggle('is-settled', rolling.stopped[index]);
+      die.dataset.stopped = String(rolling.stopped[index]);
+      die.setAttribute('aria-label', rolling.stopped[index] ? `${index + 1}個目、出目${rolling.values[index]}で確定` : `${index + 1}個目、回転中`);
+    });
+  }
+}
 
 function diceHTML(value, used = false, chosen = false, interactive = false, openingPlayer = '') {
-  const dots = value ? pips[value].map(n => `<i style="grid-area:${Math.ceil(n / 3)} / ${(n - 1) % 3 + 1}"></i>`).join('') : '<span>·</span>';
+  const dots = value ? pipHTML(value) : '<span>·</span>';
   const label = `${openingPlayer ? name(openingPlayer) + 'の' : ''}出目${value || '未定'}${used ? '、使用済み' : chosen ? '、選択中' : ''}`;
   return `<button type="button" class="die ${used ? 'used' : ''} ${chosen ? 'chosen' : ''} ${openingPlayer}" ${interactive ? `data-die="${value}"` : 'disabled'} aria-label="${label}" ${interactive ? `aria-pressed="${chosen}"` : ''}>${dots}</button>`;
 }
@@ -30,20 +79,20 @@ for (const player of ['black', 'white']) {
     dice: rail.querySelector('.dice'), undo: rail.querySelector('.undo-button'), primary: rail.querySelector('.turn-button'),
   };
   rails[player].primary.addEventListener('click', () => {
+    if (rolling) return;
     if (game.phase !== 'opening' && game.phase !== 'finished' && game.turn !== player) return;
     if (game.phase === 'finished') {
       restart();
       return;
     }
-    if (game.phase === 'opening') game = rollOpening(game, [randomDie(), randomDie()]);
-    else if (game.phase === 'roll') game = rollDice(game, [randomDie(), randomDie()]);
+    if (game.phase === 'opening' || game.phase === 'roll') { startRoll(); return; }
     else if (game.phase === 'moving' && legalMoves(game).length === 0) game = finishTurn(game);
     selected = null;
     preferredDie = null;
     render();
   });
   rails[player].undo.addEventListener('click', () => {
-    if (game.turn !== player || game.phase !== 'moving' || !game.history.length) return;
+    if (rolling || game.turn !== player || game.phase !== 'moving' || !game.history.length) return;
     game = undoMove(game);
     selected = null;
     preferredDie = null;
@@ -51,7 +100,7 @@ for (const player of ['black', 'white']) {
   });
   rails[player].dice.addEventListener('click', event => {
     const die = event.target.closest('[data-die]');
-    if (!die || game.turn !== player) return;
+    if (rolling || !die || game.turn !== player) return;
     preferredDie = preferredDie === Number(die.dataset.die) ? null : Number(die.dataset.die);
     render();
   });
@@ -96,7 +145,7 @@ center.innerHTML = '<span class="home-label black">黒のホーム</span><span c
 board.append(center);
 
 function choosePoint(target) {
-  if (game.phase !== 'moving') return;
+  if (rolling || game.phase !== 'moving') return;
   const moves = legalMoves(game);
   if (selected !== null) {
     const candidates = moves.filter(move => move.from === selected && move.to === target);
@@ -104,6 +153,7 @@ function choosePoint(target) {
       // With multiple bear-off dice, a selected die wins; otherwise prefer the exact/smaller die.
       const move = candidates.find(m => m.die === preferredDie) || candidates.sort((a, b) => a.die - b.die)[0];
       game = playMove(game, move);
+      sounds.playMove();
       selected = null;
       preferredDie = null;
       render();
@@ -116,6 +166,10 @@ function choosePoint(target) {
 }
 
 function currentMessage(moves) {
+  if (rolling) return {
+    title: rolling.stopped[1] ? '出目が決まりました' : rolling.stopped[0] ? '1個目が止まりました' : 'サイコロを振っています',
+    detail: rolling.stopped[1] ? 'この出目で進めましょう。' : rolling.stopped[0] ? 'もう1個の目が決まるのを待ちましょう。' : '2個のサイコロが、順に止まります。',
+  };
   if (game.phase === 'opening') return {
     title: game.openingDice.length ? '同じ目。もう一度！' : 'さあ、先攻を決めよう',
     detail: '白・黒1個ずつ。大きい目の人から。',
@@ -137,11 +191,12 @@ function currentMessage(moves) {
 }
 
 function render() {
-  const moves = legalMoves(game);
+  const moves = rolling ? [] : legalMoves(game);
   const message = currentMessage(moves);
   if (preferredDie !== null && !game.remaining.includes(preferredDie)) preferredDie = null;
   board.dataset.phase = game.phase;
   board.dataset.turn = game.turn || '';
+  board.dataset.rolling = String(Boolean(rolling));
   for (const player of ['white', 'black']) {
     const ui = rails[player];
     const active = game.phase === 'opening' || game.phase === 'finished' || game.turn === player;
@@ -149,12 +204,17 @@ function render() {
     ui.root.classList.toggle('winner', game.result?.winner === player);
     ui.title.textContent = message.title;
     ui.detail.textContent = message.detail;
-    ui.undo.disabled = game.turn !== player || game.phase !== 'moving' || !game.history.length;
-    ui.primary.disabled = !active || (game.phase === 'moving' && moves.length > 0);
-    ui.primary.textContent = game.phase === 'opening' ? (game.openingDice.length ? 'もう一度振る' : '先攻を決める') :
+    ui.undo.disabled = Boolean(rolling) || game.turn !== player || game.phase !== 'moving' || !game.history.length;
+    ui.primary.disabled = Boolean(rolling) || !active || (game.phase === 'moving' && moves.length > 0);
+    ui.primary.textContent = rolling ? '振っています…' : game.phase === 'opening' ? (game.openingDice.length ? 'もう一度振る' : '先攻を決める') :
       game.phase === 'roll' ? 'サイコロを振る' : game.phase === 'finished' ? 'もう一局' :
         game.off[game.turn] === 15 ? '勝利を確定' : '手番を確定';
-    if (game.phase === 'opening' || game.turnNumber === 1 && !game.history.length) {
+    ui.dice.setAttribute('aria-busy', String(Boolean(rolling)));
+    if (rolling) {
+      if (!ui.dice.classList.contains('rolling')) {
+        ui.dice.innerHTML = rolling.values.map((d, i) => diceHTML(d, false, false, false, game.phase === 'opening' ? (i ? 'black' : 'white') : '')).join('');
+      }
+    } else if (game.phase === 'opening' || game.turnNumber === 1 && !game.history.length) {
       const dice = game.openingDice.length ? game.openingDice : [0, 0];
       ui.dice.innerHTML = dice.map((d, i) => diceHTML(d, false, false, false, i ? 'black' : 'white')).join('');
     } else if (game.phase === 'roll') {
@@ -169,7 +229,9 @@ function render() {
         return diceHTML(d, i < 0, d === preferredDie, interactive);
       }).join('');
     }
+    ui.dice.classList.toggle('rolling', Boolean(rolling));
   }
+  if (rolling) paintRollingDice();
   for (const [index, point] of points) {
     const value = game.board[index];
     const count = Math.abs(value);
@@ -202,6 +264,10 @@ function render() {
 }
 
 function restart() {
+  diceAnimator.cancel();
+  pendingRoll = null;
+  rolling = null;
+  sounds.stop();
   game = createGame();
   selected = null;
   preferredDie = null;
